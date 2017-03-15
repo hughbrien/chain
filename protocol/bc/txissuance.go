@@ -154,7 +154,7 @@ func (iss *Issuance) CheckValid(state *validationState) error {
 		return errors.Wrap(err, "checking issuance destination")
 	}
 
-	if state.txVersion == 1 && (iss.body.ExtHash != Hash{}) {
+	if state.currentTx.body.Version == 1 && (iss.body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

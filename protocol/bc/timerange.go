@@ -20,3 +20,9 @@ func NewTimeRange(minTimeMS, maxTimeMS uint64) *TimeRange {
 	tr.body.MaxTimeMS = maxTimeMS
 	return tr
 }
+
+func (tr *TimeRange) CheckValid(_ *validationState) error {
+	// xxx check MinTimeMS <= MaxTimeMS?
+	// xxx check ExtHash is all zeroes?
+	return nil
+}
