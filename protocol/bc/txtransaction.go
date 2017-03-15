@@ -14,8 +14,26 @@ type TxEntries struct {
 	TxInputIDs []Hash  // 1:1 correspondence with TxData.Inputs
 }
 
+// ValidateTx validates a transaction; so does
+// TxEntries.CheckValid. This one is more suitable for calling from
+// the top level; CheckValid is preferred in a nested validation
+// context (such as when validating all the transactions in a block).
+func ValidateTx(tx *TxEntries, blockVersion uint64, initialBlockID Hash, blockTimestampMS uint64) error {
+	state := &validationState{
+		blockVersion: blockVersion,
+		initialBlockID: initialBlockID,
+		currentTx: tx,
+		currentEntryID: tx.ID,
+		timestampMS: blockTimestampMS,
+	}
+	return tx.TxHeader.CheckValid(state)
+}
+
 func (tx *TxEntries) CheckValid(state *validationState) error {
-	newState := *state
+	var newState validationState
+	if state != nil {
+		newState = *state
+	}
 	newState.currentTx = tx
 	newState.currentEntryID = tx.ID
 	return tx.TxHeader.CheckValid(&newState)

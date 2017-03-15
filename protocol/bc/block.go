@@ -35,6 +35,18 @@ type BlockEntries struct {
 	Transactions []*TxEntries
 }
 
+func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash) error {
+	state := &validationState{
+		blockVersion:      b.body.Version,
+		initialBlockID:    initialBlockID,
+		timestampMS:       b.body.TimestampMS,
+		prevBlockHeader:   prev.BlockHeaderEntry,
+		prevBlockHeaderID: b.body.PreviousBlockID,
+		blockTxs:          b.Transactions,
+	}
+	return b.BlockHeaderEntry.CheckValid(state)
+}
+
 // MarshalText fulfills the json.Marshaler interface.
 // This guarantees that blocks will get deserialized correctly
 // when being parsed from HTTP requests.
