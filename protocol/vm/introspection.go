@@ -206,7 +206,7 @@ func opBlockTime(vm *virtualMachine) error {
 		return err
 	}
 
-	timestampMS, err := vm.vmContext.BlockTime()
+	timestampMS, err := vm.vmContext.BlockTimeMS()
 	if err != nil {
 		return err
 	}

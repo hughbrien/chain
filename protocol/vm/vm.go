@@ -52,7 +52,7 @@ func Verify(vmContext VMContext) (err error) {
 		return ErrUnsupportedVM
 	}
 
-	txVersion, ok := vmContext.TXVersion()
+	txVersion, ok := vmContext.TxVersion()
 
 	code := vmContext.Code()
 	vm := &virtualMachine{

@@ -50,6 +50,37 @@ type validationState struct {
 }
 
 type blockVMContext struct {
+	prog  Program
+	args  [][]byte
+	block *BlockEntries
+}
+
+func (b *blockVMContext) VMVersion() uint64   { return b.prog.VMVersion }
+func (b *blockVMContext) Code() []byte        { return b.prog.Code }
+func (b *blockVMContext) Arguments() [][]byte { return b.args }
+
+func (b *blockVMContext) BlockHash() ([]byte, error)   { return b.block.ID[:], nil }
+func (b *blockVMContext) BlockTimeMS() (uint64, error) { return b.block.body.TimestampMS }
+
+func (b *blockVMContext) NextConsensusProgram() ([]byte, error) {
+	return b.block.body.NextConsensusProgram, nil
+}
+
+func (b *blockVMContext) TxVersion() (uint64, bool)      { return 0, false }
+func (b *blockVMContext) TxSigHash() ([]byte, error)     { return nil, ErrContext }
+func (b *blockVMContext) NumResults() (uint64, error)    { return 0, ErrContext }
+func (b *blockVMContext) AssetID() ([]byte, error)       { return nil, ErrContext }
+func (b *blockVMContext) Amount() (uint64, error)        { return 0, ErrContext }
+func (b *blockVMContext) MinTimeMS() (uint64, error)     { return 0, ErrContext }
+func (b *blockVMContext) MaxTimeMS() (uint64, error)     { return 0, ErrContext }
+func (b *blockVMContext) EntryData() ([]byte, error)     { return nil, ErrContext } // xxx ?
+func (b *blockVMContext) TxData() ([]byte, error)        { return nil, ErrContext }
+func (b *blockVMContext) DestPos() (uint64, error)       { return 0, ErrContext }
+func (b *blockVMContext) AnchorID() ([]byte, error)      { return nil, ErrContext }
+func (b *blockVMContext) SpentOutputID() ([]byte, error) { return nil, ErrContext }
+
+func (b *blockVMContext) CheckOutput(uint64, []byte, uint64, []byte, uint64, []byte) (bool, error) {
+	return false, ErrContext
 }
 
 func newBlockVMContext(blockEntries *BlockEntries, prog []byte, args [][]byte) *blockVMContext {
