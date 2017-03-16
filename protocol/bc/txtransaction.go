@@ -12,6 +12,12 @@ type TxEntries struct {
 	ID         Hash
 	TxInputs   []Entry // 1:1 correspondence with TxData.Inputs
 	TxInputIDs []Hash  // 1:1 correspondence with TxData.Inputs
+
+	// IDs of reachable entries of various kinds to speed up Apply
+	// xxx populate these
+	NonceIDs       []Hash
+	SpentOutputIDs []Hash
+	OutputIDs      []Hash
 }
 
 // ValidateTx validates a transaction; so does
@@ -20,11 +26,11 @@ type TxEntries struct {
 // context (such as when validating all the transactions in a block).
 func ValidateTx(tx *TxEntries, blockVersion uint64, initialBlockID Hash, blockTimestampMS uint64) error {
 	state := &validationState{
-		blockVersion: blockVersion,
+		blockVersion:   blockVersion,
 		initialBlockID: initialBlockID,
-		currentTx: tx,
+		currentTx:      tx,
 		currentEntryID: tx.ID,
-		timestampMS: blockTimestampMS,
+		timestampMS:    blockTimestampMS,
 	}
 	return tx.TxHeader.CheckValid(state)
 }
@@ -37,6 +43,42 @@ func (tx *TxEntries) CheckValid(state *validationState) error {
 	newState.currentTx = tx
 	newState.currentEntryID = tx.ID
 	return tx.TxHeader.CheckValid(&newState)
+}
+
+type BlockchainState interface {
+	// AddNonce adds a nonce entry's ID and its expiration time T to the
+	// state's nonce set.  It is an error for the nonce ID (with an
+	// expiry >= T) to already be present.
+	AddNonce(Hash, uint64) error
+
+	// DeleteSpentOutput removes an output ID from the utxo set. It is
+	// an error for the ID not to be present.
+	DeleteSpentOutput(Hash) error
+
+	// AddOutput adds an output ID to the utxo set.
+	AddOutput(Hash) error
+}
+
+func (tx *TxEntries) Apply(state BlockchainState) error {
+	for _, n := range tx.NonceIDs {
+		err := state.AddNonce(n, tx.MaxTimeMS())
+		if err != nil {
+			return err
+		}
+	}
+	for _, s := range tx.SpentOutputIDs {
+		err := state.DeleteSpentOutput(s)
+		if err != nil {
+			return err
+		}
+	}
+	for _, o := range tx.OutputIDs {
+		err := state.AddOutput(o)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (tx *TxEntries) SigHash(n uint32) (hash Hash) {

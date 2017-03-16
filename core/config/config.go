@@ -183,7 +183,7 @@ func Configure(ctx context.Context, db pg.DB, c *Config) error {
 			return err
 		}
 
-		err = chain.CommitBlock(ctx, block, protocol.NewSnapshot())
+		err = chain.CommitAppliedBlock(ctx, block, protocol.NewSnapshot())
 		if err != nil {
 			return err
 		}

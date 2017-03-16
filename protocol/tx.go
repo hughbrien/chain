@@ -1,10 +1,6 @@
 package protocol
 
 import (
-	"sync"
-
-	"github.com/golang/groupcache/lru"
-
 	"chain/errors"
 	"chain/protocol/bc"
 	"chain/protocol/validation"
@@ -20,4 +16,8 @@ func (c *Chain) checkIssuanceWindow(tx *bc.Tx) error {
 		}
 	}
 	return nil
+}
+
+func (c *Chain) ValidateTx(tx *bc.TxEntries, timestampMS uint64) error {
+	return bc.ValidateTx(tx, bc.NewBlockVersion, c.InitialBlockHash, timestampMS)
 }

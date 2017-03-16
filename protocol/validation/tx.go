@@ -1,10 +1,6 @@
 package validation
 
-import (
-	"chain/errors"
-	"chain/protocol"
-	"chain/protocol/bc"
-)
+import "chain/errors"
 
 // ErrBadTx is returned for transactions failing validation
 var ErrBadTx = errors.New("invalid transaction")
@@ -45,75 +41,4 @@ func badTxErrf(err error, f string, args ...interface{}) error {
 	err = errors.WithData(err, "badtx", err)
 	err = errors.WithDetailf(err, f, args...)
 	return errors.Sub(ErrBadTx, err)
-}
-
-// ConfirmTx validates the given transaction against the given state tree
-// before it's added to a block. If tx is invalid, it returns a non-nil
-// error describing why.
-//
-// Tx must already have undergone the well-formedness check in
-// CheckTxWellFormed. This should have happened when the tx was added
-// to the pool.
-//
-// ConfirmTx must not mutate the snapshot.
-func ConfirmTx(snapshot *protocol.Snapshot, initialBlockHash bc.Hash, blockVersion, blockTimestampMS uint64, tx *bc.TxEntries) error {
-	if tx.Version() < 1 || tx.Version() > blockVersion {
-		return badTxErrf(errTxVersion, "unknown transaction version %d for block version %d", tx.Version, blockVersion)
-	}
-
-	if blockTimestampMS < tx.MinTimeMS() {
-		return badTxErr(errNotYet)
-	}
-	if tx.MaxTimeMS() > 0 && blockTimestampMS > tx.MaxTimeMS() {
-		return badTxErr(errTooLate)
-	}
-
-	for i, inp := range tx.TxInputs {
-		switch inp := inp.(type) {
-		case *bc.Issuance:
-			if inp.InitialBlockID() != initialBlockHash {
-				return badTxErr(errWrongBlockchain)
-			}
-			// xxx nonce/timerange check (already done in checktxwellformed)?
-			if blockTimestampMS < tx.MinTimeMS() || blockTimestampMS > tx.MaxTimeMS() {
-				return badTxErr(errIssuanceTime)
-			}
-			id := tx.TxInputIDs[i]
-			if _, ok := snapshot.Nonces[id]; ok {
-				return badTxErr(errDuplicateNonce)
-			}
-
-		case *bc.Spend:
-			if !snapshot.Tree.Contains(inp.SpentOutputID().Bytes()) {
-				return badTxErrf(errInvalidOutput, "output %s for input %d is invalid", inp.SpentOutputID(), i)
-			}
-		}
-	}
-	return nil
-}
-
-// ApplyTx updates the state tree with all the changes to the ledger.
-func ApplyTx(snapshot *protocol.Snapshot, tx *bc.TxEntries) error {
-	for i, inp := range tx.TxInputs {
-		switch inp := inp.(type) {
-		case *bc.Issuance:
-			id := tx.TxInputIDs[i]
-			snapshot.Issuances[id] = tx.MaxTimeMS() // xxx or the max time from the anchor timerange?
-
-		case *bc.Spend:
-			// Remove the consumed output from the state tree.
-			snapshot.Tree.Delete(inp.SpentOutputID().Bytes())
-		}
-	}
-
-	for i, res := range tx.Results {
-		if _, ok := res.(*bc.Output); ok {
-			err := snapshot.Tree.Insert(tx.ResultID(uint32(i)).Bytes())
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }

@@ -5,9 +5,7 @@ import (
 	"fmt"
 
 	"chain/errors"
-	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/validation"
 )
 
 // Recover performs crash recovery, restoring the blockchain
@@ -16,7 +14,7 @@ import (
 //
 // If the blockchain is empty (missing initial block), this function
 // returns a nil block and an empty snapshot.
-func (c *Chain) Recover(ctx context.Context) (*bc.Block, *protocol.Snapshot, error) {
+func (c *Chain) Recover(ctx context.Context) (*bc.Block, *Snapshot, error) {
 	snapshot, snapshotHeight, err := c.store.LatestSnapshot(ctx)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting latest snapshot")
@@ -30,7 +28,7 @@ func (c *Chain) Recover(ctx context.Context) (*bc.Block, *protocol.Snapshot, err
 		c.lastQueuedSnapshot = b.Time()
 	}
 	if snapshot == nil {
-		snapshot = protocol.NewSnapshot()
+		snapshot = NewSnapshot()
 	}
 
 	// The true height of the blockchain might be higher than the
@@ -47,7 +45,7 @@ func (c *Chain) Recover(ctx context.Context) (*bc.Block, *protocol.Snapshot, err
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "getting block")
 		}
-		err = validation.ApplyBlock(snapshot, bc.MapBlock(b))
+		err = snapshot.ApplyBlock(bc.MapBlock(b))
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "applying block")
 		}
@@ -62,7 +60,7 @@ func (c *Chain) Recover(ctx context.Context) (*bc.Block, *protocol.Snapshot, err
 		// been too, but make sure just in case. Also "finalize" the last
 		// block (notifying other processes of the latest block height)
 		// and maybe persist the snapshot.
-		err = c.CommitBlock(ctx, b, snapshot)
+		err = c.CommitAppliedBlock(ctx, b, snapshot)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "committing block")
 		}

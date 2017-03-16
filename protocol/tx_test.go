@@ -9,7 +9,6 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"chain/crypto/ed25519"
-	"chain/protocol"
 	"chain/protocol/bc"
 	"chain/protocol/vm"
 	"chain/protocol/vmutil"
@@ -23,7 +22,7 @@ func TestBadMaxIssuanceWindow(t *testing.T) {
 
 	issueTx, _, _ := issue(t, nil, nil, 1)
 
-	got, _, err := c.GenerateBlock(ctx, b1, protocol.NewSnapshot(), time.Now(), []*bc.Tx{issueTx})
+	got, _, err := c.GenerateBlock(ctx, b1, NewSnapshot(), time.Now(), []*bc.Tx{issueTx})
 	if err != nil {
 		t.Fatal(err)
 	}
