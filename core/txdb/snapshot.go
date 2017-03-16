@@ -9,14 +9,14 @@ import (
 	"chain/database/pg"
 	"chain/database/sql"
 	"chain/errors"
+	"chain/protocol"
 	"chain/protocol/bc"
 	"chain/protocol/patricia"
-	"chain/protocol/state"
 )
 
 // DecodeSnapshot decodes a snapshot from the Chain Core's binary,
 // protobuf representation of the snapshot.
-func DecodeSnapshot(data []byte) (*state.Snapshot, error) {
+func DecodeSnapshot(data []byte) (*protocol.Snapshot, error) {
 	var storedSnapshot storage.Snapshot
 	err := proto.Unmarshal(data, &storedSnapshot)
 	if err != nil {
@@ -31,20 +31,20 @@ func DecodeSnapshot(data []byte) (*state.Snapshot, error) {
 		}
 	}
 
-	issuances := make(map[bc.Hash]uint64, len(storedSnapshot.Issuances))
-	for _, issuance := range storedSnapshot.Issuances {
+	nonces := make(map[bc.Hash]uint64, len(storedSnapshot.Nonces))
+	for _, nonce := range storedSnapshot.Nonces {
 		var hash bc.Hash
-		copy(hash[:], issuance.Hash)
-		issuances[hash] = issuance.ExpiryMs
+		copy(hash[:], nonce.Hash)
+		nonces[hash] = nonce.ExpiryMs
 	}
 
-	return &state.Snapshot{
-		Tree:      tree,
-		Issuances: issuances,
+	return &protocol.Snapshot{
+		Tree:   tree,
+		Nonces: nonces,
 	}, nil
 }
 
-func storeStateSnapshot(ctx context.Context, db pg.DB, snapshot *state.Snapshot, blockHeight uint64) error {
+func storeStateSnapshot(ctx context.Context, db pg.DB, snapshot *protocol.Snapshot, blockHeight uint64) error {
 	var storedSnapshot storage.Snapshot
 	err := patricia.Walk(snapshot.Tree, func(key []byte) error {
 		n := &storage.Snapshot_StateTreeNode{Key: key}
@@ -55,10 +55,10 @@ func storeStateSnapshot(ctx context.Context, db pg.DB, snapshot *state.Snapshot,
 		return errors.Wrap(err, "walking patricia tree")
 	}
 
-	storedSnapshot.Issuances = make([]*storage.Snapshot_Issuance, 0, len(snapshot.Issuances))
-	for k, v := range snapshot.Issuances {
+	storedSnapshot.Nonces = make([]*storage.Snapshot_Nonce, 0, len(snapshot.Nonces))
+	for k, v := range snapshot.Nonces {
 		hash := k
-		storedSnapshot.Issuances = append(storedSnapshot.Issuances, &storage.Snapshot_Issuance{
+		storedSnapshot.Nonces = append(storedSnapshot.Nonces, &storage.Snapshot_Nonce{
 			Hash:     hash[:],
 			ExpiryMs: v,
 		})
@@ -83,7 +83,7 @@ func storeStateSnapshot(ctx context.Context, db pg.DB, snapshot *state.Snapshot,
 	return errors.Wrap(err, "deleting old snapshots")
 }
 
-func getStateSnapshot(ctx context.Context, db pg.DB) (*state.Snapshot, uint64, error) {
+func getStateSnapshot(ctx context.Context, db pg.DB) (*protocol.Snapshot, uint64, error) {
 	const q = `
 		SELECT data, height FROM snapshots ORDER BY height DESC LIMIT 1
 	`
@@ -94,7 +94,7 @@ func getStateSnapshot(ctx context.Context, db pg.DB) (*state.Snapshot, uint64, e
 
 	err := db.QueryRow(ctx, q).Scan(&data, &height)
 	if err == sql.ErrNoRows {
-		return state.Empty(), 0, nil
+		return protocol.NewSnapshot(), 0, nil
 	} else if err != nil {
 		return nil, height, errors.Wrap(err, "retrieving state snapshot blob")
 	}

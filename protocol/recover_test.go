@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"chain/protocol"
 	"chain/protocol/bc"
 	"chain/protocol/memstore"
-	"chain/protocol/state"
 	"chain/testutil"
 )
 
@@ -22,7 +22,7 @@ func TestRecoverSnapshotNoAdditionalBlocks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = c1.CommitBlock(context.Background(), b, state.Empty())
+	err = c1.CommitBlock(context.Background(), b, protocol.NewSnapshot())
 	if err != nil {
 		testutil.FatalErr(t, err)
 	}
@@ -54,7 +54,7 @@ func TestRecoverSnapshotNoAdditionalBlocks(t *testing.T) {
 	}
 }
 
-func createEmptyBlock(block *bc.Block, snapshot *state.Snapshot) *bc.Block {
+func createEmptyBlock(block *bc.Block, snapshot *protocol.Snapshot) *bc.Block {
 	root, err := bc.CalcMerkleRoot(nil)
 	if err != nil {
 		log.Fatalf("calculating empty merkle root: %s", err)

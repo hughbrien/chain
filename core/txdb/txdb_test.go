@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"chain/database/pg/pgtest"
+	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 	"chain/testutil"
 )
 
@@ -16,7 +16,7 @@ func TestLatestSnapshot(t *testing.T) {
 	dbtx := pgtest.NewTx(t)
 	store := NewStore(dbtx)
 
-	snap := state.Empty()
+	snap := protocol.NewSnapshot()
 	snap.Issuances[bc.Hash{0xc0, 0x01}] = 12345678
 	err := snap.Tree.Insert([]byte{0x01, 0x02, 0x03, 0x04})
 	if err != nil {

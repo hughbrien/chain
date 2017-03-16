@@ -7,8 +7,8 @@ import (
 
 	"chain/encoding/blockchain"
 	"chain/errors"
+	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 	"chain/protocol/vm"
 )
 
@@ -86,7 +86,7 @@ func TestUniqueIssuance(t *testing.T) {
 		t.Errorf("expected tx with unique issuance to pass validation, got: %s", err)
 	}
 
-	snapshot := state.Empty()
+	snapshot := protocol.NewSnapshot()
 
 	// Add tx to the state tree so we can spend it in the next tx
 	err = ApplyTx(snapshot, tx.TxEntries)
@@ -824,7 +824,7 @@ func TestValidateInvalidIssuances(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		err := ConfirmTx(state.Empty(), initialBlockHash, 1, c.timestamp, c.tx.TxEntries)
+		err := ConfirmTx(protocol.NewSnapshot(), initialBlockHash, 1, c.timestamp, c.tx.TxEntries)
 		if !c.ok && errors.Root(err) != ErrBadTx {
 			t.Errorf("test %d: got = %s, want ErrBadTx", i, err)
 			continue
@@ -859,7 +859,7 @@ func TestConfirmTx(t *testing.T) {
 	outid1 := tx.OutputID(0)
 	outres := tx.Results[0].(*bc.Output)
 
-	snapshot := state.Empty()
+	snapshot := protocol.NewSnapshot()
 	err := snapshot.Tree.Insert(outid1[:])
 	if err != nil {
 		t.Fatal(err)

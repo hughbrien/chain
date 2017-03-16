@@ -47,6 +47,8 @@ type validationState struct {
 	prevBlockHeader   *BlockHeaderEntry
 	prevBlockHeaderID Hash
 	blockTxs          []*TxEntries
+
+	blockVMContext *blockVMContext
 	// xxx reachable entries?
 }
 

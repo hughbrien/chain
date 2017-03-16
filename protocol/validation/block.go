@@ -10,8 +10,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"chain/errors"
+	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 	"chain/protocol/vm"
 	"chain/protocol/vmutil"
 )
@@ -27,34 +27,12 @@ var (
 	ErrBadStateRoot = errors.New("invalid state merkle root")
 )
 
-// ValidateBlockForAccept performs steps 1 and 2
-// of the "accept block" procedure from the spec.
-// See $CHAIN/protocol/doc/spec/validation.md#accept-block.
-// It evaluates the prevBlock's consensus program,
-// then calls ValidateBlock.
-func ValidateBlockForAccept(ctx context.Context, snapshot *state.Snapshot, initialBlockHash bc.Hash, prevBlock, block *bc.BlockEntries, validateTx func(*bc.TxEntries) error) error {
-	if prevBlock != nil {
-		err := vm.VerifyBlockHeader(prevBlock.BlockHeaderEntry, block)
-		if err != nil {
-			pkScriptStr, _ := vm.Disassemble(prevBlock.NextConsensusProgram())
-			argStrs := make([]string, 0, len(block.Arguments()))
-			for _, arg := range block.Arguments() {
-				argStrs = append(argStrs, hex.EncodeToString(arg))
-			}
-			argStr := strings.Join(argStrs, "; ")
-			return errors.Sub(ErrBadSig, errors.Wrapf(err, "program [%s] args [%s]", pkScriptStr, argStr))
-		}
-	}
-
-	return ValidateBlock(ctx, snapshot, initialBlockHash, prevBlock, block, validateTx)
-}
-
 // ValidateBlock performs the "validate block" procedure from the spec,
 // yielding a new state (recorded in the 'snapshot' argument).
 // See $CHAIN/protocol/doc/spec/validation.md#validate-block.
 // Note that it does not execute prevBlock's consensus program.
 // (See ValidateBlockForAccept for that.)
-func ValidateBlock(ctx context.Context, snapshot *state.Snapshot, initialBlockHash bc.Hash, prevBlock, block *bc.BlockEntries, validateTx func(*bc.TxEntries) error) error {
+func ValidateBlock(ctx context.Context, snapshot *protocol.Snapshot, initialBlockHash bc.Hash, prevBlock, block *bc.BlockEntries) error {
 
 	var g errgroup.Group
 	// Do all of the unparallelizable work, plus validating the block
@@ -68,7 +46,7 @@ func ValidateBlock(ctx context.Context, snapshot *state.Snapshot, initialBlockHa
 		if err != nil {
 			return err
 		}
-		snapshot.PruneIssuances(block.TimestampMS())
+		snapshot.PruneNonces(block.TimestampMS())
 
 		// TODO: Check that other block headers are valid.
 		// TODO(erykwalder): consider writing to a copy of the state tree
@@ -110,8 +88,8 @@ func ValidateBlock(ctx context.Context, snapshot *state.Snapshot, initialBlockHa
 }
 
 // ApplyBlock applies the transactions in the block to the state tree.
-func ApplyBlock(snapshot *state.Snapshot, block *bc.BlockEntries) error {
-	snapshot.PruneIssuances(block.TimestampMS())
+func ApplyBlock(snapshot *protocol.Snapshot, block *bc.BlockEntries) error {
+	snapshot.PruneNonces(block.TimestampMS())
 	for _, tx := range block.Transactions {
 		err := ApplyTx(snapshot, tx)
 		if err != nil {

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"chain/errors"
+	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 	"chain/protocol/vm"
 )
 
@@ -129,7 +129,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	}}
 	for i, c := range cases {
 		block := bc.MapBlock(&bc.Block{BlockHeader: c.header})
-		snap := state.Empty()
+		snap := protocol.NewSnapshot()
 		got := ValidateBlockForAccept(ctx, snap, prev.ID, prev, block, nil) // nil b/c no txs to validate
 		if errors.Root(got) != c.want {
 			t.Errorf("%d", i)

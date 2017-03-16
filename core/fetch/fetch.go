@@ -19,7 +19,6 @@ import (
 	"chain/log"
 	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 )
 
 const heightPollingPeriod = 3 * time.Second
@@ -75,7 +74,7 @@ func BootstrapSnapshot(ctx context.Context, c *protocol.Chain, store protocol.St
 // It returns when its context is canceled.
 // After each attempt to fetch and apply a block, it calls health
 // to report either an error or nil to indicate success.
-func Fetch(ctx context.Context, c *protocol.Chain, peer *rpc.Client, health func(error), prevBlock *bc.Block, prevSnapshot *state.Snapshot) {
+func Fetch(ctx context.Context, c *protocol.Chain, peer *rpc.Client, health func(error), prevBlock *bc.Block, prevSnapshot *protocol.Snapshot) {
 	// If we downloaded a snapshot, now that we've recovered and successfully
 	// booted from the snapshot, mark it as done.
 	if sp := SnapshotProgress(); sp != nil {
@@ -196,7 +195,7 @@ func updateGeneratorHeight(ctx context.Context, peer *rpc.Client) {
 	generatorHeightFetchedAt = time.Now()
 }
 
-func applyBlock(ctx context.Context, c *protocol.Chain, prevSnap *state.Snapshot, prev *bc.Block, block *bc.Block) (*state.Snapshot, *bc.Block, error) {
+func applyBlock(ctx context.Context, c *protocol.Chain, prevSnap *protocol.Snapshot, prev *bc.Block, block *bc.Block) (*protocol.Snapshot, *bc.Block, error) {
 	snap, err := c.ValidateBlock(ctx, prevSnap, prev, block)
 	if err != nil {
 		return prevSnap, prev, err
@@ -333,7 +332,7 @@ func fetchSnapshot(ctx context.Context, peer *rpc.Client, s protocol.Store, atte
 	// to them in the block. This means that Cores bootstrapping from a
 	// snapshot cannot guarantee uniqueness of issuances until the max
 	// issuance window has elapsed.
-	snapshot.PruneIssuances(math.MaxUint64)
+	snapshot.PruneNonces(math.MaxUint64)
 
 	// Next, get the initial block.
 	initialBlock, err := getBlock(ctx, peer, 1, getBlockTimeout)

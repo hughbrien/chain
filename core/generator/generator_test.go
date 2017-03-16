@@ -10,7 +10,6 @@ import (
 	"chain/protocol"
 	"chain/protocol/bc"
 	"chain/protocol/prottest"
-	"chain/protocol/state"
 	"chain/protocol/vm"
 	"chain/testutil"
 )
@@ -66,7 +65,7 @@ func TestGetAndAddBlockSignatures(t *testing.T) {
 
 	g := New(c, []BlockSigner{testSigner{pubKey, privKey}}, nil)
 	g.latestBlock = b1
-	g.latestSnapshot = state.Empty()
+	g.latestSnapshot = protocol.NewSnapshot()
 
 	tip, snapshot, err := c.Recover(ctx)
 	if err != nil {

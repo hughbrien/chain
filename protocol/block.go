@@ -8,8 +8,8 @@ import (
 	"chain/crypto/ed25519"
 	"chain/errors"
 	"chain/log"
+	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 	"chain/protocol/validation"
 	"chain/protocol/vmutil"
 )
@@ -41,15 +41,15 @@ func (c *Chain) GetBlock(ctx context.Context, height uint64) (*bc.Block, error) 
 //
 // After generating the block, the pending transaction pool will be
 // empty.
-func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *state.Snapshot, now time.Time, txs []*bc.Tx) (b *bc.Block, result *state.Snapshot, err error) {
+func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *protocol.Snapshot, now time.Time, txs []*bc.Tx) (b *bc.Block, result *protocol.Snapshot, err error) {
 	timestampMS := bc.Millis(now)
 	if timestampMS < prev.TimestampMS {
 		return nil, nil, fmt.Errorf("timestamp %d is earlier than prevblock timestamp %d", timestampMS, prev.TimestampMS)
 	}
 
 	// Make a copy of the state that we can apply our changes to.
-	result = state.Copy(snapshot)
-	result.PruneIssuances(timestampMS)
+	result = snapshot.Copy()
+	result.PruneNonces(timestampMS)
 
 	b = &bc.Block{
 		BlockHeader: bc.BlockHeader{
@@ -94,16 +94,15 @@ func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *sta
 // ValidateBlock performs validation on an incoming block, in advance
 // of committing the block. ValidateBlock returns the state after
 // the block has been applied.
-func (c *Chain) ValidateBlock(ctx context.Context, prevState *state.Snapshot, prev, block *bc.Block) (*state.Snapshot, error) {
-	newState := state.Copy(prevState)
-	err := validation.ValidateBlockForAccept(ctx, newState, c.InitialBlockHash, bc.MapBlock(prev), bc.MapBlock(block), c.ValidateTxCached)
+func (c *Chain) ValidateBlock(ctx context.Context, prevState *protocol.Snapshot, prev, block *bc.Block) (*protocol.Snapshot, error) {
+	newState := prevState.Copy()
+	err := bc.ValidateBlock(bc.MapBlock(block), bc.MapBlock(prev), c.InitialBlockHash, true)
 	if err != nil {
 		return nil, errors.Sub(ErrBadBlock, err)
 	}
-	// TODO(kr): consider calling CommitBlock here and
-	// renaming this function to AcceptBlock.
-	// See $CHAIN/protocol/doc/spec/validation.md#accept-block
-	// and the comment in validation/block.go:/ValidateBlock.
+
+	// xxx do the stuff that validation.ValidateBlock does (?)
+
 	return newState, nil
 }
 
@@ -116,7 +115,7 @@ func (c *Chain) ValidateBlock(ctx context.Context, prevState *state.Snapshot, pr
 //
 // The block parameter must have already been validated before
 // being committed.
-func (c *Chain) CommitBlock(ctx context.Context, block *bc.Block, snapshot *state.Snapshot) error {
+func (c *Chain) CommitBlock(ctx context.Context, block *bc.Block, snapshot *protocol.Snapshot) error {
 	// SaveBlock is the linearization point. Once the block is committed
 	// to persistent storage, the block has been applied and everything
 	// else can be derived from that block.
@@ -145,7 +144,7 @@ func (c *Chain) CommitBlock(ctx context.Context, block *bc.Block, snapshot *stat
 	return nil
 }
 
-func (c *Chain) queueSnapshot(ctx context.Context, height uint64, timestamp time.Time, s *state.Snapshot) {
+func (c *Chain) queueSnapshot(ctx context.Context, height uint64, timestamp time.Time, s *protocol.Snapshot) {
 	// Non-blockingly queue the snapshot for storage.
 	ps := pendingSnapshot{height: height, snapshot: s}
 	select {
@@ -182,7 +181,7 @@ func (c *Chain) setHeight(h uint64) {
 func (c *Chain) ValidateBlockForSig(ctx context.Context, block *bc.Block) error {
 	var (
 		prev     *bc.Block
-		snapshot = state.Empty()
+		snapshot = protocol.NewSnapshot()
 	)
 
 	if block.Height > 1 {
@@ -200,12 +199,8 @@ func (c *Chain) ValidateBlockForSig(ctx context.Context, block *bc.Block) error 
 
 	// TODO(kr): cache the applied snapshot, and maybe
 	// we can skip re-applying it later
-	snapshot = state.Copy(snapshot)
-	var prevEntries *bc.BlockEntries
-	if prev != nil {
-		prevEntries = bc.MapBlock(prev)
-	}
-	err := validation.ValidateBlock(ctx, snapshot, c.InitialBlockHash, prevEntries, bc.MapBlock(block), validation.CheckTxWellFormed)
+	snapshot = snapshot.Copy()
+	err := bc.ValidateBlock(bc.MapBlock(block), bc.MapBlock(prev), c.InitialBlockHash, false)
 	return errors.Wrap(err, "validation")
 }
 

@@ -35,7 +35,11 @@ type BlockEntries struct {
 	Transactions []*TxEntries
 }
 
-func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash) error {
+func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) error {
+	var vmContext *blockVMContext
+	if runProg {
+		vmContext = newBlockVMContext(b, prev.body.NextConsensusProgram, b.witness.Arguments)
+	}
 	state := &validationState{
 		blockVersion:      b.body.Version,
 		initialBlockID:    initialBlockID,
@@ -43,6 +47,7 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash) error {
 		prevBlockHeader:   prev.BlockHeaderEntry,
 		prevBlockHeaderID: b.body.PreviousBlockID,
 		blockTxs:          b.Transactions,
+		blockVMContext:    vmContext,
 	}
 	return b.BlockHeaderEntry.CheckValid(state)
 }

@@ -7,7 +7,6 @@ import (
 
 	"chain/protocol/bc"
 	"chain/protocol/prottest"
-	"chain/protocol/state"
 	"chain/protocol/validation"
 )
 
@@ -45,7 +44,7 @@ func BenchmarkValidateBlock(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		st := state.Copy(s)
+		st := s.Copy()
 		err := validation.ValidateBlockForAccept(ctx, st, b1Entries.ID, b1Entries, nextBlockEntries, validation.CheckTxWellFormed)
 		if err != nil {
 			b.Fatal(err)

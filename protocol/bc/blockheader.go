@@ -100,13 +100,11 @@ func (bh *BlockHeaderEntry) CheckValid(state *validationState) error {
 			return errors.WithDetailf(errMisorderedBlockTime, "previous block time %d, current block time %d", state.prevBlockHeader.body.TimestampMS, bh.body.TimestampMS)
 		}
 
-		blockEntries := &BlockEntries{
-			BlockHeaderEntry: bh,
-			ID:               EntryID(bh),
-		}
-		err := vm.Verify(newBlockVMContext(blockEntries, state.prevBlockHeader.body.NextConsensusProgram, blockEntries.witness.Arguments))
-		if err != nil {
-			return errors.Wrap(err, "evaluating previous block's next consensus program")
+		if state.blockVMContext != nil {
+			err := vm.Verify(state.blockVMContext)
+			if err != nil {
+				return errors.Wrap(err, "evaluating previous block's next consensus program")
+			}
 		}
 	}
 

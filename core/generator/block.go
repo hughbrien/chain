@@ -12,8 +12,8 @@ import (
 	"chain/errors"
 	"chain/log"
 	"chain/metrics"
+	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 	"chain/protocol/vmutil"
 )
 
@@ -63,7 +63,7 @@ func (g *Generator) makeBlock(ctx context.Context) error {
 	return g.commitBlock(ctx, b, s)
 }
 
-func (g *Generator) commitBlock(ctx context.Context, b *bc.Block, s *state.Snapshot) error {
+func (g *Generator) commitBlock(ctx context.Context, b *bc.Block, s *protocol.Snapshot) error {
 	err := g.getAndAddBlockSignatures(ctx, b, g.latestBlock)
 	if err != nil {
 		return errors.Wrap(err, "sign")

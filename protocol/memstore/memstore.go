@@ -9,15 +9,15 @@ import (
 	"fmt"
 	"sync"
 
+	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 )
 
 // MemStore satisfies the protocol.Store interface.
 type MemStore struct {
 	mu          sync.Mutex
 	Blocks      map[uint64]*bc.Block
-	State       *state.Snapshot
+	State       *protocol.Snapshot
 	StateHeight uint64
 }
 
@@ -45,11 +45,11 @@ func (m *MemStore) SaveBlock(ctx context.Context, b *bc.Block) error {
 	return nil
 }
 
-func (m *MemStore) SaveSnapshot(ctx context.Context, height uint64, snapshot *state.Snapshot) error {
+func (m *MemStore) SaveSnapshot(ctx context.Context, height uint64, snapshot *protocol.Snapshot) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.State = state.Copy(snapshot)
+	m.State = snapshot.Copy()
 	m.StateHeight = height
 	return nil
 }
@@ -64,14 +64,14 @@ func (m *MemStore) GetBlock(ctx context.Context, height uint64) (*bc.Block, erro
 	return b, nil
 }
 
-func (m *MemStore) LatestSnapshot(context.Context) (*state.Snapshot, uint64, error) {
+func (m *MemStore) LatestSnapshot(context.Context) (*protocol.Snapshot, uint64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.State == nil {
-		m.State = state.Empty()
+		m.State = protocol.NewSnapshot()
 	}
-	return state.Copy(m.State), m.StateHeight, nil
+	return m.State.Copy(), m.StateHeight, nil
 }
 
 func (m *MemStore) FinalizeBlock(context.Context, uint64) error { return nil }

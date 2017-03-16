@@ -45,12 +45,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/groupcache/lru"
-
 	"chain/errors"
 	"chain/log"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 )
 
 // maxCachedValidatedTxs is the max number of validated txs to cache.
@@ -72,11 +69,11 @@ var (
 type Store interface {
 	Height(context.Context) (uint64, error)
 	GetBlock(context.Context, uint64) (*bc.Block, error)
-	LatestSnapshot(context.Context) (*state.Snapshot, uint64, error)
+	LatestSnapshot(context.Context) (*Snapshot, uint64, error)
 
 	SaveBlock(context.Context, *bc.Block) error
 	FinalizeBlock(context.Context, uint64) error
-	SaveSnapshot(context.Context, uint64, *state.Snapshot) error
+	SaveSnapshot(context.Context, uint64, *Snapshot) error
 }
 
 // Chain provides a complete, minimal blockchain database. It
@@ -90,20 +87,18 @@ type Chain struct {
 	state struct {
 		cond     sync.Cond // protects height, block, snapshot
 		height   uint64
-		block    *bc.Block       // current only if leader
-		snapshot *state.Snapshot // current only if leader
+		block    *bc.Block // current only if leader
+		snapshot *Snapshot // current only if leader
 	}
 	store Store
 
 	lastQueuedSnapshot time.Time
 	pendingSnapshots   chan pendingSnapshot
-
-	prevalidated prevalidatedTxsCache
 }
 
 type pendingSnapshot struct {
 	height   uint64
-	snapshot *state.Snapshot
+	snapshot *Snapshot
 }
 
 // NewChain returns a new Chain using store as the underlying storage.
@@ -112,9 +107,6 @@ func NewChain(ctx context.Context, initialBlockHash bc.Hash, store Store, height
 		InitialBlockHash: initialBlockHash,
 		store:            store,
 		pendingSnapshots: make(chan pendingSnapshot, 1),
-		prevalidated: prevalidatedTxsCache{
-			lru: lru.New(maxCachedValidatedTxs),
-		},
 	}
 	c.state.cond.L = new(sync.Mutex)
 
@@ -160,13 +152,13 @@ func (c *Chain) Height() uint64 {
 // State returns the most recent state available. It will not be current
 // unless the current process is the leader. Callers should examine the
 // returned block header's height if they need to verify the current state.
-func (c *Chain) State() (*bc.Block, *state.Snapshot) {
+func (c *Chain) State() (*bc.Block, *Snapshot) {
 	c.state.cond.L.Lock()
 	defer c.state.cond.L.Unlock()
 	return c.state.block, c.state.snapshot
 }
 
-func (c *Chain) setState(b *bc.Block, s *state.Snapshot) {
+func (c *Chain) setState(b *bc.Block, s *Snapshot) {
 	c.state.cond.L.Lock()
 	defer c.state.cond.L.Unlock()
 	c.state.block = b

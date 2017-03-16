@@ -13,7 +13,6 @@ import (
 	"chain/log"
 	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 	"chain/protocol/validation"
 )
 
@@ -42,7 +41,7 @@ type Generator struct {
 	// generator.Generate() should return and this struct should be
 	// garbage collected.
 	latestBlock    *bc.Block
-	latestSnapshot *state.Snapshot
+	latestSnapshot *protocol.Snapshot
 }
 
 // New creates and initializes a new Generator.
@@ -94,7 +93,7 @@ func (g *Generator) Generate(
 	period time.Duration,
 	health func(error),
 	recoveredBlock *bc.Block,
-	recoveredSnapshot *state.Snapshot,
+	recoveredSnapshot *protocol.Snapshot,
 ) {
 	g.latestBlock, g.latestSnapshot = recoveredBlock, recoveredSnapshot
 
@@ -106,7 +105,7 @@ func (g *Generator) Generate(
 		log.Fatalkv(ctx, log.KeyError, err)
 	}
 	if b != nil && (g.latestBlock == nil || b.Height == g.latestBlock.Height+1) {
-		s := state.Copy(g.latestSnapshot)
+		s := g.latestSnapshot.Copy()
 		err := validation.ApplyBlock(s, bc.MapBlock(b))
 		if err != nil {
 			log.Fatalkv(ctx, log.KeyError, err)

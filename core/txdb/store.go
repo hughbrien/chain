@@ -7,7 +7,6 @@ import (
 	"chain/errors"
 	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 )
 
 // A Store encapsulates storage for blockchain validation.
@@ -58,7 +57,7 @@ func (s *Store) GetBlock(ctx context.Context, height uint64) (*bc.Block, error) 
 
 // LatestSnapshot returns the most recent state snapshot stored in
 // the database and its corresponding block height.
-func (s *Store) LatestSnapshot(ctx context.Context) (*state.Snapshot, uint64, error) {
+func (s *Store) LatestSnapshot(ctx context.Context) (*protocol.Snapshot, uint64, error) {
 	return getStateSnapshot(ctx, s.db)
 }
 
@@ -96,7 +95,7 @@ func (s *Store) SaveBlock(ctx context.Context, block *bc.Block) error {
 }
 
 // SaveSnapshot saves a state snapshot to the database.
-func (s *Store) SaveSnapshot(ctx context.Context, height uint64, snapshot *state.Snapshot) error {
+func (s *Store) SaveSnapshot(ctx context.Context, height uint64, snapshot *protocol.Snapshot) error {
 	err := storeStateSnapshot(ctx, s.db, snapshot, height)
 	return errors.Wrap(err, "saving state tree")
 }

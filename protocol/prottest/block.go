@@ -9,13 +9,12 @@ import (
 	"chain/protocol"
 	"chain/protocol/bc"
 	"chain/protocol/memstore"
-	"chain/protocol/state"
 	"chain/testutil"
 )
 
 var (
 	mutex  sync.Mutex // protects the following
-	states = make(map[*protocol.Chain]*state.Snapshot)
+	states = make(map[*protocol.Chain]*protocol.Snapshot)
 )
 
 // NewChain makes a new Chain using memstore for storage,
@@ -40,7 +39,7 @@ func NewChainWithStorage(tb testing.TB, store protocol.Store, outputIDs ...bc.Ha
 	}
 	c.MaxIssuanceWindow = 48 * time.Hour // TODO(tessr): consider adding MaxIssuanceWindow to NewChain
 
-	s := state.Empty()
+	s := protocol.NewSnapshot()
 	for _, outputID := range outputIDs {
 		s.Tree.Insert(outputID[:])
 	}
@@ -70,7 +69,7 @@ func MakeBlock(tb testing.TB, c *protocol.Chain, txs []*bc.Tx) *bc.Block {
 	curState := states[c]
 	mutex.Unlock()
 	if curState == nil {
-		curState = state.Empty()
+		curState = protocol.NewSnapshot()
 	}
 
 	nextBlock, nextState, err := c.GenerateBlock(ctx, curBlock, curState, time.Now(), txs)

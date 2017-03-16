@@ -6,15 +6,15 @@ import (
 	"testing"
 
 	"chain/database/pg/pgtest"
+	"chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/state"
 	"chain/testutil"
 )
 
 func TestReadWriteStateSnapshotIssuanceMemory(t *testing.T) {
 	dbtx := pgtest.NewTx(t)
 	ctx := context.Background()
-	snapshot := state.Empty()
+	snapshot := protocol.NewSnapshot()
 	snapshot.Issuances[bc.Hash{0x01}] = 10
 	snapshot.Issuances[bc.Hash{0x02}] = 10
 	snapshot.Issuances[bc.Hash{0x03}] = 45
@@ -40,7 +40,7 @@ func TestReadWriteStateSnapshot(t *testing.T) {
 	dbtx := pgtest.NewTx(t)
 	ctx := context.Background()
 
-	snapshot := state.Empty()
+	snapshot := protocol.NewSnapshot()
 	changes := []struct {
 		inserts          []bc.Hash
 		deletes          []bc.Hash
@@ -143,7 +143,7 @@ func benchmarkStoreSnapshot(nodes, issuances int, b *testing.B) {
 	db := pgtest.NewTx(b)
 	ctx := context.Background()
 
-	snapshot := state.Empty()
+	snapshot := protocol.NewSnapshot()
 	for i := 0; i < nodes; i++ {
 		var h [32]byte
 		_, err := r.Read(h[:])
