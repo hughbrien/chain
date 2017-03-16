@@ -3,15 +3,17 @@ package protocol
 import (
 	"chain/errors"
 	"chain/protocol/bc"
-	"chain/protocol/validation"
 )
+
+// ErrBadTx is returned for transactions failing validation
+var ErrBadTx = errors.New("invalid transaction")
 
 func (c *Chain) checkIssuanceWindow(tx *bc.Tx) error {
 	for _, txi := range tx.Inputs {
 		if _, ok := txi.TypedInput.(*bc.IssuanceInput); ok {
 			// TODO(tessr): consider removing 0 check once we can configure this
 			if c.MaxIssuanceWindow != 0 && tx.MinTime+bc.DurationMillis(c.MaxIssuanceWindow) < tx.MaxTime {
-				return errors.WithDetailf(validation.ErrBadTx, "issuance input's time window is larger than the network maximum (%s)", c.MaxIssuanceWindow)
+				return errors.WithDetailf(ErrBadTx, "issuance input's time window is larger than the network maximum (%s)", c.MaxIssuanceWindow)
 			}
 		}
 	}
