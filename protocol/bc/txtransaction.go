@@ -40,9 +40,9 @@ func (tx *TxEntries) CheckValid(state *validationState) error {
 	if state != nil {
 		newState = *state
 	}
-	newState.currentTx = tx
-	newState.currentEntryID = tx.ID
-	return tx.TxHeader.CheckValid(&newState)
+	ctx = context.WithValue(ctx, vcCurrentTx, tx)
+	ctx = context.WithValue(ctx, vcCurrentEntryID, tx.ID)
+	return tx.TxHeader.CheckValid(ctx)
 }
 
 type BlockchainState interface {

@@ -87,10 +87,11 @@ func NewSpend(out *Output, data Hash, ordinal int) *Spend {
 	return s
 }
 
-func (s *Spend) CheckValid(state *validationState) error {
+func (s *Spend) CheckValid(ctx context.Context) error {
 	// xxx SpentOutput "present"
 
-	err := vm.Verify(newTxVMContext(state.currentTx, s, s.SpentOutput.body.ControlProgram, s.witness.Arguments))
+	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
+	err := vm.Verify(newTxVMContext(currentTx, s, s.SpentOutput.body.ControlProgram, s.witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking control program")
 	}
@@ -106,14 +107,13 @@ func (s *Spend) CheckValid(state *validationState) error {
 		)
 	}
 
-	destState := *state
-	destState.destPosition = 0
-	err = s.witness.Destination.CheckValid(&destState)
+	ctx = context.WithValue(ctx, vcDestPos, 0)
+	err = s.witness.Destination.CheckValid(ctx)
 	if err != nil {
 		return errors.Wrap(err, "checking spend destination")
 	}
 
-	if state.currentTx.body.Version == 1 && (s.body.ExtHash != Hash{}) {
+	if currentTx.body.Version == 1 && (s.body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

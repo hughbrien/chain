@@ -1,5 +1,7 @@
 package bc
 
+import "context"
+
 // TimeRange denotes a time range. It satisfies the Entry interface.
 type TimeRange struct {
 	body struct {
@@ -21,7 +23,7 @@ func NewTimeRange(minTimeMS, maxTimeMS uint64) *TimeRange {
 	return tr
 }
 
-func (tr *TimeRange) CheckValid(_ *validationState) error {
+func (tr *TimeRange) CheckValid(_ context.Context) error {
 	// xxx check MinTimeMS <= MaxTimeMS?
 	// xxx check ExtHash is all zeroes?
 	return nil

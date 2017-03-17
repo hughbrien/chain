@@ -4,6 +4,7 @@ import (
 	"chain/errors"
 	"chain/math/checked"
 	"chain/protocol/vm"
+	"context"
 )
 
 // Mux splits and combines value from one or more source entries,
@@ -39,25 +40,24 @@ func NewMux(sources []valueSource, program Program) *Mux {
 	return m
 }
 
-func (mux *Mux) CheckValid(state *validationState) error {
-	err := vm.Verify(newTxVMContext(state.currentTx, mux, mux.body.Program, mux.witness.Arguments))
+func (mux *Mux) CheckValid(ctx context.Context) error {
+	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
+	err := vm.Verify(newTxVMContext(currentTx, mux, mux.body.Program, mux.witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking mux program")
 	}
 
 	for i, src := range mux.body.Sources {
-		srcState := *state
-		srcState.sourcePosition = uint64(i)
-		err := src.CheckValid(&srcState)
+		ctx = context.WithValue(ctx, vcSourcePos, uint64(i))
+		err := src.CheckValid(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "checking mux source %d", i)
 		}
 	}
 
 	for i, dest := range mux.witness.Destinations {
-		destState := *state
-		destState.destPosition = uint64(i)
-		err := dest.CheckValid(&destState)
+		ctx = context.WithValue(ctx, vcDestPos, uint64(i))
+		err := dest.CheckValid(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "checking mux destination %d", i)
 		}
@@ -91,7 +91,7 @@ func (mux *Mux) CheckValid(state *validationState) error {
 		}
 	}
 
-	if state.currentTx.body.Version == 1 && (mux.body.ExtHash != Hash{}) {
+	if currentTx.body.Version == 1 && (mux.body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

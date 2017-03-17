@@ -1,6 +1,7 @@
 package bc
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"reflect"
@@ -13,7 +14,7 @@ import (
 type ValidChecker interface {
 	// CheckValid checks the entry for validity w.r.t. the given
 	// validation state.
-	CheckValid(state *validationState) error
+	CheckValid(context.Context) error
 }
 
 // Entry is the interface implemented by each addressable unit in a

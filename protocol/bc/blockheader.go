@@ -1,6 +1,8 @@
 package bc
 
 import (
+	"context"
+
 	"chain/errors"
 	"chain/protocol/vm"
 )
@@ -78,47 +80,54 @@ func NewBlockHeaderEntry(version, height uint64, previousBlockID Hash, timestamp
 	return bh
 }
 
-func (bh *BlockHeaderEntry) CheckValid(state *validationState) error {
-	if state.prevBlockHeader == nil {
+func (bh *BlockHeaderEntry) CheckValid(ctx context.Context) error {
+	prevBlockHeader, _ := ctx.Value(vcPrevBlockHeader).(*BlockHeaderEntry)
+
+	if prevBlockHeader == nil {
 		if bh.body.Height != 1 {
 			return errors.WithDetailf(errNoPrevBlock, "height %d", bh.body.Height)
 		}
 	} else {
-		if bh.body.Version < state.prevBlockHeader.body.Version {
-			return errors.WithDetailf(errVersionRegression, "previous block verson %d, current block version %d", state.prevBlockHeader.body.Version, bh.body.Version)
+		if bh.body.Version < prevBlockHeader.body.Version {
+			return errors.WithDetailf(errVersionRegression, "previous block verson %d, current block version %d", prevBlockHeader.body.Version, bh.body.Version)
 		}
 
-		if bh.body.Height != state.prevBlockHeader.body.Height+1 {
-			return errors.WithDetailf(errMisorderedBlockHeight, "previous block height %d, current block height %d", state.prevBlockHeader.body.Height, bh.body.Height)
+		if bh.body.Height != prevBlockHeader.body.Height+1 {
+			return errors.WithDetailf(errMisorderedBlockHeight, "previous block height %d, current block height %d", prevBlockHeader.body.Height, bh.body.Height)
 		}
 
-		if state.prevBlockHeaderID != bh.body.PreviousBlockID {
-			return errors.WithDetailf(errMismatchedBlock, "previous block ID %x, current block wants %x", state.prevBlockHeaderID[:], bh.body.PreviousBlockID[:])
+		prevBlockHeaderID, _ := ctx.Value(vcPrevBlockHeaderID).(Hash)
+		if prevBlockHeaderID != bh.body.PreviousBlockID {
+			return errors.WithDetailf(errMismatchedBlock, "previous block ID %x, current block wants %x", prevBlockHeaderID[:], bh.body.PreviousBlockID[:])
 		}
 
-		if bh.body.TimestampMS <= state.prevBlockHeader.body.TimestampMS {
-			return errors.WithDetailf(errMisorderedBlockTime, "previous block time %d, current block time %d", state.prevBlockHeader.body.TimestampMS, bh.body.TimestampMS)
+		if bh.body.TimestampMS <= prevBlockHeader.body.TimestampMS {
+			return errors.WithDetailf(errMisorderedBlockTime, "previous block time %d, current block time %d", prevBlockHeader.body.TimestampMS, bh.body.TimestampMS)
 		}
 
-		if state.blockVMContext != nil {
-			err := vm.Verify(state.blockVMContext)
+		blockVMContext, _ := ctx.Value(vcBlockVMContext).(*blockVMContext)
+		if blockVMContext != nil {
+			err := vm.Verify(blockVMContext)
 			if err != nil {
 				return errors.Wrap(err, "evaluating previous block's next consensus program")
 			}
 		}
 	}
 
-	for i, tx := range state.blockTxs {
-		txState := *state
-		txState.currentEntryID = tx.ID
-		txState.currentTx = tx
-		err := tx.CheckValid(&txState)
+	ctx = context.WithValue(ctx, vcBlockVersion, bh.body.Version)
+	ctx = context.WithValue(ctx, vcTimestampMS, bh.body.TimestampMS)
+
+	blockTxs, _ := ctx.Value(vcBlockTxs).([]*TxEntries)
+	for i, tx := range blockTxs {
+		ctx = context.WithValue(ctx, vcCurrentEntryID, tx.ID)
+		ctx = context.WithValue(ctx, vcCurrentTx, tx)
+		err := tx.CheckValid(ctx)
 		if err != nil {
-			return errors.Wrapf(err, "checking validity of transaction %d of %d", i, len(state.blockTxs))
+			return errors.Wrapf(err, "checking validity of transaction %d of %d", i, len(blockTxs))
 		}
 	}
 
-	txRoot, err := CalcMerkleRoot(state.blockTxs)
+	txRoot, err := CalcMerkleRoot(blockTxs)
 	if err != nil {
 		return errors.Wrap(err, "computing transaction merkle root")
 	}

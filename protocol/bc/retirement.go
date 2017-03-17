@@ -44,15 +44,15 @@ func NewRetirement(source valueSource, data Hash, ordinal int) *Retirement {
 	return r
 }
 
-func (r *Retirement) CheckValid(state *validationState) error {
-	srcState := *state
-	srcState.sourcePosition = 0
-	err := r.body.Source.CheckValid(&srcState)
+func (r *Retirement) CheckValid(ctx context.Context) error {
+	ctx = context.WithValue(ctx, vcSourcePos, 0)
+	err := r.body.Source.CheckValid(ctx)
 	if err != nil {
 		return errors.Wrap(err, "checking retirement source")
 	}
 
-	if state.currentTx.body.Version == 1 && (r.body.ExtHash != Hash{}) {
+	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
+	if currentTx.body.Version == 1 && (r.body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

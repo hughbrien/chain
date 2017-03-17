@@ -61,29 +61,32 @@ func NewTxHeader(version uint64, results []Entry, data Hash, minTimeMS, maxTimeM
 	return h
 }
 
-func (tx *TxHeader) CheckValid(state *validationState) error {
-	if state.blockVersion == 1 && tx.body.Version != 1 {
-		return errors.WithDetailf(errTxVersion, "block version %d, transaction version %d", state.blockVersion, tx.body.Version)
+func (tx *TxHeader) CheckValid(ctx context.Context) error {
+	// blockVersion and timestampMS are present only when validating in a block context.
+	blockVersion, _ := ctx.Value(vcBlockVersion).(uint64)
+	timestampMS, _ := ctx.Value(vcTimestampMS).(uint64)
+
+	if blockVersion == 1 && tx.body.Version != 1 {
+		return errors.WithDetailf(errTxVersion, "block version %d, transaction version %d", blockVersion, tx.body.Version)
 	}
 
 	if tx.body.MaxTimeMS > 0 {
 		if tx.body.MaxTimeMS < tx.body.MinTimeMS {
 			return errors.WithDetailf(errBadTimeRange, "min time %d, max time %d", tx.body.MinTimeMS, tx.body.MaxTimeMS)
 		}
-		if state.timestampMS > tx.body.MaxTimeMS {
-			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", state.timestampMS, tx.body.MinTimeMS, tx.body.MaxTimeMS)
+		if timestampMS > tx.body.MaxTimeMS {
+			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", timestampMS, tx.body.MinTimeMS, tx.body.MaxTimeMS)
 		}
 	}
 
-	if tx.body.MinTimeMS > 0 && state.timestampMS < tx.body.MinTimeMS {
-		return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", state.timestampMS, tx.body.MinTimeMS, tx.body.MaxTimeMS)
+	if tx.body.MinTimeMS > 0 && timestampMS > 0 && timestampMS < tx.body.MinTimeMS {
+		return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", timestampMS, tx.body.MinTimeMS, tx.body.MaxTimeMS)
 	}
 
 	for i, resID := range tx.body.Results {
 		res := tx.Results[i]
-		resState := *state
-		resState.currentEntryID = resID
-		err := res.CheckValid(&resState)
+		ctx = context.WithValue(ctx, vcCurrentEntryID, resID)
+		err := res.CheckValid(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "checking result %d", i)
 		}

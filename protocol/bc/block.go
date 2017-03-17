@@ -2,6 +2,7 @@ package bc
 
 import (
 	"bytes"
+	"context"
 	"database/sql/driver"
 	"encoding/hex"
 	"fmt"
@@ -40,6 +41,17 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) err
 	if runProg {
 		vmContext = newBlockVMContext(b, prev.body.NextConsensusProgram, b.witness.Arguments)
 	}
+
+	bvInfo := &blockValidationInfo{
+		prevBlockHeader: prev.BlockHeaderEntry,
+		prevBlockHeaderID: b.body.PreviousBlockID,
+		blockVMContext: vmContext,
+		blockTxs: b.Transactions,
+	}
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, vcBlockValidationInfo, bvInfo)
+
 	state := &validationState{
 		blockVersion:      b.body.Version,
 		initialBlockID:    initialBlockID,

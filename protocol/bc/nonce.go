@@ -43,8 +43,9 @@ func NewNonce(p Program, tr *TimeRange) *Nonce {
 	return n
 }
 
-func (n *Nonce) CheckValid(state *validationState) error {
-	err := vm.Verify(newTxVMContext(state.currentTx, n, n.body.Program, n.witness.Arguments))
+func (n *Nonce) CheckValid(ctx context.Context) error {
+	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
+	err := vm.Verify(newTxVMContext(currentTx, n, n.body.Program, n.witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking nonce program")
 	}
@@ -55,7 +56,7 @@ func (n *Nonce) CheckValid(state *validationState) error {
 		return errZeroTime
 	}
 
-	if state.currentTx.body.Version == 1 && (n.body.ExtHash != Hash{}) {
+	if currentTx.body.Version == 1 && (n.body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

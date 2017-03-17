@@ -27,29 +27,27 @@ var (
 	errZeroTime              = errors.New("timerange has one or two bounds set to zero")
 )
 
-type validationState struct {
-	blockVersion   uint64
-	initialBlockID Hash
+// keys for storing/retrieving validation values to/from context objects
+const (
+	vcCurrentEntryID = 1 + iota // Entry
+	vcCurrentTx                 // *TxEntries
+	vcSourcePos                 // uint64
+	vcDestPos                   // uint64
+	vcInitialBlockID            // Hash
 
-	currentTx *TxEntries
+	// These are only needed by TxHeader.CheckValid (and are optional)
+	vcBlockVersion // uint64
+	vcTimestampMS  // uint64
 
-	// Set this to the ID of an entry whenever validating an entry
-	currentEntryID Hash
+	// This is only needed by BlockHeaderEntry.CheckValid
+	vcBlockValidationInfo // *blockValidationInfo
+)
 
-	// Must be defined when validating a valueSource
-	sourcePosition uint64
-
-	// Must be defined when validating a valueDestination
-	destPosition uint64
-
-	// The block timestamp
-	timestampMS       uint64
+type blockValidationInfo struct {
 	prevBlockHeader   *BlockHeaderEntry
 	prevBlockHeaderID Hash
 	blockTxs          []*TxEntries
-
-	blockVMContext *blockVMContext
-	// xxx reachable entries?
+	blockVMContext    *blockVMContext
 }
 
 type blockVMContext struct {
