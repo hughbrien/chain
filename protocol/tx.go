@@ -20,6 +20,6 @@ func (c *Chain) checkIssuanceWindow(tx *bc.Tx) error {
 	return nil
 }
 
-func (c *Chain) ValidateTx(tx *bc.TxEntries, timestampMS uint64) error {
-	return bc.ValidateTx(tx, bc.NewBlockVersion, c.InitialBlockHash, timestampMS)
+func (c *Chain) ValidateTx(tx *bc.TxEntries) error {
+	return bc.ValidateTx(tx, c.InitialBlockHash)
 }

@@ -77,7 +77,7 @@ func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *Sna
 			continue
 		}
 
-		err = c.ValidateTx(tx.TxEntries, timestampMS)
+		err = c.ValidateTx(tx.TxEntries)
 		if err != nil {
 			// xxx log it?
 			continue
