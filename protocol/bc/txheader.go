@@ -64,31 +64,14 @@ func NewTxHeader(version uint64, results []Entry, data Hash, minTimeMS, maxTimeM
 	return h
 }
 
+// CheckValid does only part of the work of validating a tx
+// header. The block-related parts of tx validation are in
+// ValidateBlock.
 func (tx *TxHeader) CheckValid(ctx context.Context) error {
-	// txvInfo is present only when validating in a block context
-	txvInfo, _ := ctx.Value(vcTxValidationInfo).(*txValidationInfo)
-
-	var blockVersion, timestampMS uint64
-	if txvInfo != nil {
-		blockVersion = txvInfo.blockVersion
-		timestampMS = txvInfo.timestampMS
-	}
-
-	if blockVersion == 1 && tx.body.Version != 1 {
-		return errors.WithDetailf(errTxVersion, "block version %d, transaction version %d", blockVersion, tx.body.Version)
-	}
-
 	if tx.body.MaxTimeMS > 0 {
 		if tx.body.MaxTimeMS < tx.body.MinTimeMS {
 			return errors.WithDetailf(errBadTimeRange, "min time %d, max time %d", tx.body.MinTimeMS, tx.body.MaxTimeMS)
 		}
-		if timestampMS > tx.body.MaxTimeMS {
-			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", timestampMS, tx.body.MinTimeMS, tx.body.MaxTimeMS)
-		}
-	}
-
-	if tx.body.MinTimeMS > 0 && timestampMS > 0 && timestampMS < tx.body.MinTimeMS {
-		return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", timestampMS, tx.body.MinTimeMS, tx.body.MaxTimeMS)
 	}
 
 	for i, resID := range tx.body.Results {

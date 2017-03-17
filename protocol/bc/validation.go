@@ -34,28 +34,7 @@ const (
 	vcSourcePos                 // uint64
 	vcDestPos                   // uint64
 	vcInitialBlockID            // Hash
-
-	// Needed only by TxHeader.CheckValid (and optional)
-	vcTxHeaderValidationInfo // *txValidationInfo
-
-	// These are only needed by TxHeader.CheckValid (and are optional)
-	vcTxValidationInfo
-
-	// This is only needed by BlockHeaderEntry.CheckValid
-	vcBlockValidationInfo // *blockValidationInfo
 )
-
-type blockValidationInfo struct {
-	prevBlockHeader   *BlockHeaderEntry
-	prevBlockHeaderID Hash
-	blockTxs          []*TxEntries
-	blockVMContext    *blockVMContext
-}
-
-type txValidationInfo struct {
-	blockVersion uint64
-	timestampMS  uint64
-}
 
 type blockVMContext struct {
 	prog  Program
