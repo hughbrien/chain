@@ -30,27 +30,27 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 		firstSpend *Spend
 		spends     []*Spend
 		issuances  []*Issuance
-		muxSources = make([]valueSource, len(tx.Inputs))
+		muxSources = make([]ValueSource, len(tx.Inputs))
 	)
 
 	for i, inp := range tx.Inputs {
 		if oldSp, ok := inp.TypedInput.(*SpendInput); ok {
 			prog := Program{VMVersion: oldSp.VMVersion, Code: oldSp.ControlProgram}
-			src := valueSource{
+			src := ValueSource{
 				Ref:      oldSp.SourceID,
 				Value:    oldSp.AssetAmount,
 				Position: oldSp.SourcePosition,
 			}
 			out := NewOutput(src, prog, oldSp.RefDataHash, 0) // ordinal doesn't matter for prevouts, only for result outputs
 			sp := NewSpend(out, hashData(inp.ReferenceData), i)
-			sp.SetArguments(oldSp.Arguments)
+			sp.Arguments = oldSp.Arguments
 			var id Hash
 			id, err = addEntry(sp)
 			if err != nil {
 				err = errors.Wrapf(err, "adding spend entry for input %d", i)
 				return
 			}
-			muxSources[i] = valueSource{
+			muxSources[i] = ValueSource{
 				Ref:   id,
 				Value: oldSp.AssetAmount,
 				Entry: sp,
@@ -128,7 +128,7 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 			iss.SetInitialBlockID(oldIss.InitialBlock)
 			iss.SetAssetDefinitionHash(hashData(oldIss.AssetDefinition))
 			iss.SetIssuanceProgram(Program{VMVersion: oldIss.VMVersion, Code: oldIss.IssuanceProgram})
-			iss.SetArguments(oldIss.Arguments)
+			iss.Arguments = oldIss.Arguments
 			var issID Hash
 			issID, err = addEntry(iss)
 			if err != nil {
@@ -136,7 +136,7 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 				return
 			}
 
-			muxSources[i] = valueSource{
+			muxSources[i] = ValueSource{
 				Ref:   issID,
 				Value: val,
 				Entry: iss,
@@ -163,7 +163,7 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 	var results []Entry
 
 	for i, out := range tx.Outputs {
-		src := valueSource{
+		src := ValueSource{
 			Ref:      muxID,
 			Value:    out.AssetAmount,
 			Position: uint64(i),
@@ -202,7 +202,7 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 				Entry:    o,
 			}
 		}
-		mux.witness.Destinations = append(mux.witness.Destinations, dest)
+		mux.Destinations = append(mux.Destinations, dest)
 	}
 
 	h := NewTxHeader(tx.Version, results, hashData(tx.ReferenceData), tx.MinTime, tx.MaxTime)
@@ -217,7 +217,7 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 
 func mapBlockHeader(old *BlockHeader) (bhID Hash, bh *BlockHeaderEntry) {
 	bh = NewBlockHeaderEntry(old.Version, old.Height, old.PreviousBlockHash, old.TimestampMS, old.TransactionsMerkleRoot, old.AssetsMerkleRoot, old.ConsensusProgram)
-	bh.SetArguments(old.Witness)
+	bh.Arguments = old.Witness
 	bhID = EntryID(bh)
 	return
 }
