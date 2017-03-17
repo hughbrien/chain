@@ -53,7 +53,7 @@ type BlockchainState interface {
 
 func (tx *TxEntries) Apply(state BlockchainState) error {
 	for _, n := range tx.NonceIDs {
-		err := state.AddNonce(n, tx.MaxTimeMS)
+		err := state.AddNonce(n, tx.MaxTimeMS())
 		if err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ func ComputeOutputID(sc *SpendCommitment) (h Hash, err error) {
 			err = r
 		}
 	}()
-	src := ValueSource{
+	src := valueSource{
 		Ref:      sc.SourceID,
 		Value:    sc.AssetAmount,
 		Position: sc.SourcePosition,

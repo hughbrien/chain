@@ -153,9 +153,10 @@ func buildAnnotatedInput(tx *bc.Tx, i uint32) *AnnotatedInput {
 	}
 
 	if sp, ok := tx.TxEntries.TxInputs[i].(*bc.Spend); ok {
+		prevoutID := sp.SpentOutputID()
 		in.Type = "spend"
 		in.ControlProgram = orig.ControlProgram()
-		in.SpentOutputID = &sp.SpentOutputID
+		in.SpentOutputID = &prevoutID
 	} else {
 		in.Type = "issue"
 		in.IssuanceProgram = orig.IssuanceProgram()

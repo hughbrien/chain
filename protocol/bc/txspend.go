@@ -6,103 +6,115 @@ import (
 	"context"
 )
 
-type (
-	SpendBody struct {
+// Spend accesses the value in a prior Output for transfer
+// elsewhere. It satisfies the Entry interface.
+//
+// (Not to be confused with the deprecated type SpendInput.)
+type Spend struct {
+	body struct {
 		SpentOutputID Hash // the hash of an output entry
 		Data          Hash
 		ExtHash       Hash
 	}
+	ordinal int
 
-	SpendWitness struct {
+	witness struct {
 		Destination ValueDestination
 		Arguments   [][]byte
 		AnchoredID  Hash
 	}
 
-	// Spend accesses the value in a prior Output for transfer
-	// elsewhere. It satisfies the Entry interface.
-	//
-	// (Not to be confused with the deprecated type SpendInput.)
-	Spend struct {
-		SpendBody
-		SpendWitness
+	// SpentOutput contains (a pointer to) the manifested entry
+	// corresponding to body.SpentOutputID.
+	SpentOutput *Output
 
-		ordinal int
-
-		// SpentOutput contains (a pointer to) the manifested entry
-		// corresponding to body.SpentOutputID.
-		SpentOutput *Output
-
-		// Anchored contains a pointer to the manifested entry corresponding
-		// to witness.AnchoredID.
-		Anchored Entry
-	}
-)
+	// Anchored contains a pointer to the manifested entry corresponding
+	// to witness.AnchoredID.
+	Anchored Entry
+}
 
 func (Spend) Type() string         { return "spend1" }
-func (s *Spend) Body() interface{} { return s.SpendBody }
+func (s *Spend) Body() interface{} { return s.body }
 
 func (s Spend) Ordinal() int { return s.ordinal }
+
+func (s *Spend) SpentOutputID() Hash {
+	return s.body.SpentOutputID
+}
+
+func (s *Spend) Data() Hash {
+	return s.body.Data
+}
 
 func (s *Spend) AssetID() AssetID {
 	return s.SpentOutput.AssetID()
 }
 
 func (s *Spend) ControlProgram() Program {
-	return s.SpentOutput.ControlProgram
+	return s.SpentOutput.ControlProgram()
 }
 
 func (s *Spend) Amount() uint64 {
 	return s.SpentOutput.Amount()
 }
 
+func (s *Spend) Destination() ValueDestination {
+	return s.witness.Destination
+}
+
+func (s *Spend) Arguments() [][]byte {
+	return s.witness.Arguments
+}
+
 func (s *Spend) SetDestination(id Hash, pos uint64, e Entry) {
-	s.Destination = ValueDestination{
+	s.witness.Destination = ValueDestination{
 		Ref:      id,
 		Position: pos,
 		Entry:    e,
 	}
 }
 
+func (s *Spend) SetArguments(args [][]byte) {
+	s.witness.Arguments = args
+}
+
 // NewSpend creates a new Spend.
 func NewSpend(out *Output, data Hash, ordinal int) *Spend {
-	return &Spend{
-		SpendBody: SpendBody{
-			SpentOutputID: EntryID(out),
-			Data:          data,
-		},
-		ordinal:     ordinal,
-		SpentOutput: out,
-	}
+	s := new(Spend)
+	s.body.SpentOutputID = EntryID(out)
+	s.body.Data = data
+	s.ordinal = ordinal
+	s.SpentOutput = out
+	return s
 }
 
 func (s *Spend) CheckValid(ctx context.Context) error {
 	// xxx SpentOutput "present"
 
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(newTxVMContext(currentTx, s, s.SpentOutput.ControlProgram, s.Arguments))
+	err := vm.Verify(newTxVMContext(currentTx, s, s.SpentOutput.body.ControlProgram, s.witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking control program")
 	}
 
-	if s.SpentOutput.Source.Value != s.Destination.Value {
+	if s.SpentOutput.body.Source.Value != s.witness.Destination.Value {
 		return errors.WithDetailf(
 			errMismatchedValue,
 			"previous output is for %d unit(s) of %x, spend wants %d unit(s) of %x",
-			s.SpentOutput.Source.Value.Amount,
-			s.SpentOutput.Source.Value.AssetID[:],
-			s.Destination.Value.Amount,
-			s.Destination.Value.AssetID[:],
+			s.SpentOutput.body.Source.Value.Amount,
+			s.SpentOutput.body.Source.Value.AssetID[:],
+			s.witness.Destination.Value.Amount,
+			s.witness.Destination.Value.AssetID[:],
 		)
 	}
 
 	ctx = context.WithValue(ctx, vcDestPos, 0)
-	err = s.Destination.CheckValid(ctx)
+	err = s.witness.Destination.CheckValid(ctx)
 	if err != nil {
 		return errors.Wrap(err, "checking spend destination")
 	}
 
-	if currentTx.Version == 1 && (s.ExtHash != Hash{}) {
+	if currentTx.body.Version == 1 && (s.body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

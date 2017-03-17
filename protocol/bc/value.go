@@ -7,7 +7,7 @@ import (
 	"chain/errors"
 )
 
-type ValueSource struct {
+type valueSource struct {
 	Ref      Hash
 	Value    AssetAmount
 	Position uint64
@@ -19,7 +19,7 @@ type ValueSource struct {
 
 // CheckValid checks the validity of a value source in the context of
 // its containing entry.
-func (vs *ValueSource) CheckValid(ctx context.Context) error {
+func (vs *valueSource) CheckValid(ctx context.Context) error {
 	// xxx check that Entry's ID equals Ref?
 
 	ctx = context.WithValue(ctx, vcCurrentEntryID, vs.Ref)
@@ -34,19 +34,19 @@ func (vs *ValueSource) CheckValid(ctx context.Context) error {
 		if vs.Position != 0 {
 			return errors.WithDetailf(errPosition, "invalid position %d for issuance source", vs.Position)
 		}
-		dest = ref.Destination
+		dest = ref.witness.Destination
 
 	case *Spend:
 		if vs.Position != 0 {
 			return errors.WithDetailf(errPosition, "invalid position %d for spend source", vs.Position)
 		}
-		dest = ref.Destination
+		dest = ref.witness.Destination
 
 	case *Mux:
-		if vs.Position >= uint64(len(ref.Destinations)) {
-			return errors.WithDetailf(errPosition, "invalid position %d for %d-destination mux source", vs.Position, len(ref.Destinations))
+		if vs.Position >= uint64(len(ref.witness.Destinations)) {
+			return errors.WithDetailf(errPosition, "invalid position %d for %d-destination mux source", vs.Position, len(ref.witness.Destinations))
 		}
-		dest = ref.Destinations[vs.Position]
+		dest = ref.witness.Destinations[vs.Position]
 
 	default:
 		return errors.WithDetailf(errEntryType, "value source is %T, should be issuance, spend, or mux", vs.Entry)
@@ -82,25 +82,25 @@ type ValueDestination struct {
 func (vd *ValueDestination) CheckValid(ctx context.Context) error {
 	// xxx check reachability of vd.Ref from transaction?
 
-	var src ValueSource
+	var src valueSource
 	switch ref := vd.Entry.(type) {
 	case *Output:
 		if vd.Position != 0 {
 			fmt.Errorf("invalid position %d for output destination", vd.Position)
 		}
-		src = ref.Source
+		src = ref.body.Source
 
 	case *Retirement:
 		if vd.Position != 0 {
 			fmt.Errorf("invalid position %d for retirement destination", vd.Position)
 		}
-		src = ref.Source
+		src = ref.body.Source
 
 	case *Mux:
-		if vd.Position >= uint64(len(ref.Sources)) {
-			return fmt.Errorf("invalid position %d for %d-source mux destination", vd.Position, len(ref.Sources))
+		if vd.Position >= uint64(len(ref.body.Sources)) {
+			return fmt.Errorf("invalid position %d for %d-source mux destination", vd.Position, len(ref.body.Sources))
 		}
-		src = ref.Sources[vd.Position]
+		src = ref.body.Sources[vd.Position]
 
 	default:
 		return fmt.Errorf("value destination is %T, should be output, retirement, or mux", vd.Entry)

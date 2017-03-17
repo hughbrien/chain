@@ -6,48 +6,74 @@ import (
 	"context"
 )
 
-type (
-	IssuanceBody struct {
+// Issuance is a source of new value on a blockchain. It satisfies the
+// Entry interface.
+//
+// (Not to be confused with the deprecated type IssuanceInput.)
+type Issuance struct {
+	body struct {
 		AnchorID Hash
 		Value    AssetAmount
 		Data     Hash
 		ExtHash  Hash
 	}
+	ordinal int
 
-	IssuanceEntryWitness struct { // TODO(bobg): rename to IssuanceWitness when it no longer conflicts with the legacy type
+	witness struct {
 		Destination     ValueDestination
 		AssetDefinition AssetDefinition
 		Arguments       [][]byte
 		AnchoredID      Hash
 	}
 
-	// Issuance is a source of new value on a blockchain. It satisfies the
-	// Entry interface.
-	//
-	// (Not to be confused with the deprecated type IssuanceInput.)
-	Issuance struct {
-		IssuanceBody
-		IssuanceEntryWitness
+	// Anchor is a pointer to the manifested entry corresponding to
+	// body.AnchorID.
+	Anchor Entry // *nonce, *spend, or *issuance
 
-		ordinal int
-
-		// Anchor is a pointer to the manifested entry corresponding to
-		// body.AnchorID.
-		Anchor Entry // *nonce, *spend, or *issuance
-
-		// Anchored is a pointer to the manifested entry corresponding to
-		// witness.AnchoredID.
-		Anchored Entry
-	}
-)
+	// Anchored is a pointer to the manifested entry corresponding to
+	// witness.AnchoredID.
+	Anchored Entry
+}
 
 func (Issuance) Type() string           { return "issuance1" }
-func (iss *Issuance) Body() interface{} { return iss.IssuanceBody }
+func (iss *Issuance) Body() interface{} { return iss.body }
 
 func (iss Issuance) Ordinal() int { return iss.ordinal }
 
+func (iss *Issuance) AnchorID() Hash {
+	return iss.body.AnchorID
+}
+
+func (iss *Issuance) Data() Hash {
+	return iss.body.Data
+}
+
+func (iss *Issuance) AssetID() AssetID {
+	return iss.body.Value.AssetID
+}
+
+func (iss *Issuance) Amount() uint64 {
+	return iss.body.Value.Amount
+}
+
+func (iss *Issuance) Destination() ValueDestination {
+	return iss.witness.Destination
+}
+
+func (iss *Issuance) InitialBlockID() Hash {
+	return iss.witness.AssetDefinition.InitialBlockID
+}
+
+func (iss *Issuance) IssuanceProgram() Program {
+	return iss.witness.AssetDefinition.IssuanceProgram
+}
+
+func (iss *Issuance) Arguments() [][]byte {
+	return iss.witness.Arguments
+}
+
 func (iss *Issuance) SetDestination(id Hash, pos uint64, e Entry) {
-	iss.Destination = ValueDestination{
+	iss.witness.Destination = ValueDestination{
 		Ref:      id,
 		Position: pos,
 		Entry:    e,
@@ -55,43 +81,45 @@ func (iss *Issuance) SetDestination(id Hash, pos uint64, e Entry) {
 }
 
 func (iss *Issuance) SetInitialBlockID(hash Hash) {
-	iss.AssetDefinition.InitialBlockID = hash
+	iss.witness.AssetDefinition.InitialBlockID = hash
 }
 
 func (iss *Issuance) SetAssetDefinitionHash(hash Hash) {
-	iss.AssetDefinition.Data = hash
+	iss.witness.AssetDefinition.Data = hash
 }
 
 func (iss *Issuance) SetIssuanceProgram(prog Program) {
-	iss.AssetDefinition.IssuanceProgram = prog
+	iss.witness.AssetDefinition.IssuanceProgram = prog
+}
+
+func (iss *Issuance) SetArguments(args [][]byte) {
+	iss.witness.Arguments = args
 }
 
 // NewIssuance creates a new Issuance.
 func NewIssuance(anchor Entry, value AssetAmount, data Hash, ordinal int) *Issuance {
-	return &Issuance{
-		IssuanceBody: IssuanceBody{
-			AnchorID: EntryID(anchor),
-			Value:    value,
-			Data:     data,
-		},
-		Anchor:  anchor,
-		ordinal: ordinal,
-	}
+	iss := new(Issuance)
+	iss.body.AnchorID = EntryID(anchor)
+	iss.Anchor = anchor
+	iss.body.Value = value
+	iss.body.Data = data
+	iss.ordinal = ordinal
+	return iss
 }
 
 func (iss *Issuance) CheckValid(ctx context.Context) error {
 	initialBlockID, _ := ctx.Value(vcInitialBlockID).(Hash)
-	if iss.AssetDefinition.InitialBlockID != initialBlockID {
-		return errors.WithDetailf(errWrongBlockchain, "current blockchain %x, asset defined on blockchain %x", initialBlockID[:], iss.AssetDefinition.InitialBlockID[:])
+	if iss.witness.AssetDefinition.InitialBlockID != initialBlockID {
+		return errors.WithDetailf(errWrongBlockchain, "current blockchain %x, asset defined on blockchain %x", initialBlockID[:], iss.witness.AssetDefinition.InitialBlockID[:])
 	}
 
-	computedAssetID := iss.AssetDefinition.ComputeAssetID()
-	if computedAssetID != iss.Value.AssetID {
-		return errors.WithDetailf(errMismatchedAssetID, "asset ID is %x, issuance wants %x", computedAssetID[:], iss.Value.AssetID[:])
+	computedAssetID := iss.witness.AssetDefinition.ComputeAssetID()
+	if computedAssetID != iss.body.Value.AssetID {
+		return errors.WithDetailf(errMismatchedAssetID, "asset ID is %x, issuance wants %x", computedAssetID[:], iss.body.Value.AssetID[:])
 	}
 
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(newTxVMContext(currentTx, iss, iss.AssetDefinition.IssuanceProgram, iss.Arguments))
+	err := vm.Verify(newTxVMContext(currentTx, iss, iss.witness.AssetDefinition.IssuanceProgram, iss.witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking issuance program")
 	}
@@ -99,13 +127,13 @@ func (iss *Issuance) CheckValid(ctx context.Context) error {
 	var anchored Hash
 	switch a := iss.Anchor.(type) {
 	case *Nonce:
-		anchored = a.AnchoredID
+		anchored = a.witness.AnchoredID
 
 	case *Spend:
-		anchored = a.AnchoredID
+		anchored = a.witness.AnchoredID
 
 	case *Issuance:
-		anchored = a.AnchoredID
+		anchored = a.witness.AnchoredID
 
 	default:
 		return errors.WithDetailf(errEntryType, "issuance anchor has type %T, should be nonce, spend, or issuance", iss.Anchor)
@@ -116,19 +144,19 @@ func (iss *Issuance) CheckValid(ctx context.Context) error {
 		return errors.WithDetailf(errMismatchedReference, "issuance %x anchor is for %x", currentEntryID[:], anchored[:])
 	}
 
-	anchorCtx := context.WithValue(ctx, vcCurrentEntryID, iss.AnchorID)
+	anchorCtx := context.WithValue(ctx, vcCurrentEntryID, iss.body.AnchorID)
 	err = iss.Anchor.CheckValid(anchorCtx)
 	if err != nil {
 		return errors.Wrap(err, "checking issuance anchor")
 	}
 
 	destCtx := context.WithValue(ctx, vcDestPos, 0)
-	err = iss.Destination.CheckValid(destCtx)
+	err = iss.witness.Destination.CheckValid(destCtx)
 	if err != nil {
 		return errors.Wrap(err, "checking issuance destination")
 	}
 
-	if currentTx.Version == 1 && (iss.ExtHash != Hash{}) {
+	if currentTx.body.Version == 1 && (iss.body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

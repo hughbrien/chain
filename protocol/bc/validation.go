@@ -47,10 +47,10 @@ func (b *blockVMContext) Code() []byte        { return b.prog.Code }
 func (b *blockVMContext) Arguments() [][]byte { return b.args }
 
 func (b *blockVMContext) BlockHash() ([]byte, error)   { return b.block.ID[:], nil }
-func (b *blockVMContext) BlockTimeMS() (uint64, error) { return b.block.TimestampMS, nil }
+func (b *blockVMContext) BlockTimeMS() (uint64, error) { return b.block.body.TimestampMS, nil }
 
 func (b *blockVMContext) NextConsensusProgram() ([]byte, error) {
-	return b.block.NextConsensusProgram, nil
+	return b.block.body.NextConsensusProgram, nil
 }
 
 func (b *blockVMContext) TxVersion() (uint64, bool)      { return 0, false }
@@ -106,7 +106,7 @@ func (t *txVMContext) BlockTimeMS() (uint64, error) { return 0, errContext }
 
 func (t *txVMContext) NextConsensusProgram() ([]byte, error) { return nil, errContext }
 
-func (t *txVMContext) TxVersion() (uint64, bool) { return t.tx.Version, true }
+func (t *txVMContext) TxVersion() (uint64, bool) { return t.tx.body.Version, true }
 
 func (t *txVMContext) TxSigHash() ([]byte, error) {
 	ord := t.entry.Ordinal()
@@ -123,15 +123,15 @@ func (t *txVMContext) AssetID() ([]byte, error) {
 	switch inp := t.entry.(type) {
 	case *Nonce:
 		if iss, ok := inp.Anchored.(*Issuance); ok {
-			return iss.Value.AssetID[:], nil
+			return iss.body.Value.AssetID[:], nil
 		}
 		return nil, errContext
 
 	case *Issuance:
-		return inp.Value.AssetID[:], nil
+		return inp.body.Value.AssetID[:], nil
 
 	case *Spend:
-		return inp.SpentOutput.Source.Value.AssetID[:], nil
+		return inp.SpentOutput.body.Source.Value.AssetID[:], nil
 	}
 
 	return nil, errContext
@@ -141,50 +141,50 @@ func (t *txVMContext) Amount() (uint64, error) {
 	switch inp := t.entry.(type) {
 	case *Nonce:
 		if iss, ok := inp.Anchored.(*Issuance); ok {
-			return iss.Value.Amount, nil
+			return iss.body.Value.Amount, nil
 		}
 		return 0, errContext
 
 	case *Issuance:
-		return inp.Value.Amount, nil
+		return inp.body.Value.Amount, nil
 
 	case *Spend:
-		return inp.SpentOutput.Source.Value.Amount, nil
+		return inp.SpentOutput.body.Source.Value.Amount, nil
 	}
 
 	return 0, errContext
 }
 
-func (t *txVMContext) MinTimeMS() (uint64, error) { return t.tx.MinTimeMS, nil }
-func (t *txVMContext) MaxTimeMS() (uint64, error) { return t.tx.MaxTimeMS, nil }
+func (t *txVMContext) MinTimeMS() (uint64, error) { return t.tx.body.MinTimeMS, nil }
+func (t *txVMContext) MaxTimeMS() (uint64, error) { return t.tx.body.MaxTimeMS, nil }
 
 func (t *txVMContext) EntryData() ([]byte, error) {
 	switch inp := t.entry.(type) {
 	case *Issuance:
-		return inp.Data[:], nil
+		return inp.body.Data[:], nil
 
 	case *Spend:
-		return inp.Data[:], nil
+		return inp.body.Data[:], nil
 
 	case *Output:
-		return inp.Data[:], nil
+		return inp.body.Data[:], nil
 
 	case *Retirement:
-		return inp.Data[:], nil
+		return inp.body.Data[:], nil
 	}
 
 	return nil, errContext
 }
 
-func (t *txVMContext) TxData() ([]byte, error) { return t.tx.Data[:], nil }
+func (t *txVMContext) TxData() ([]byte, error) { return t.tx.body.Data[:], nil }
 
 func (t *txVMContext) DestPos() (uint64, error) {
 	switch inp := t.entry.(type) {
 	case *Issuance:
-		return inp.Destination.Position, nil
+		return inp.witness.Destination.Position, nil
 
 	case *Spend:
-		return inp.Destination.Position, nil
+		return inp.witness.Destination.Position, nil
 	}
 
 	return 0, errContext
@@ -192,14 +192,14 @@ func (t *txVMContext) DestPos() (uint64, error) {
 
 func (t *txVMContext) AnchorID() ([]byte, error) {
 	if inp, ok := t.entry.(*Issuance); ok {
-		return inp.AnchorID[:], nil
+		return inp.body.AnchorID[:], nil
 	}
 	return nil, errContext
 }
 
 func (t *txVMContext) SpentOutputID() ([]byte, error) {
 	if inp, ok := t.entry.(*Spend); ok {
-		return inp.SpentOutputID[:], nil
+		return inp.body.SpentOutputID[:], nil
 	}
 	return nil, errContext
 }

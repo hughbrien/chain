@@ -39,28 +39,28 @@ type BlockEntries struct {
 
 func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) error {
 	if prev == nil {
-		if b.Height != 1 {
-			return errors.WithDetailf(errNoPrevBlock, "height %d", b.Height)
+		if b.body.Height != 1 {
+			return errors.WithDetailf(errNoPrevBlock, "height %d", b.body.Height)
 		}
 	} else {
-		if b.Version < prev.Version {
-			return errors.WithDetailf(errVersionRegression, "previous block verson %d, current block version %d", prev.Version, b.Version)
+		if b.body.Version < prev.body.Version {
+			return errors.WithDetailf(errVersionRegression, "previous block verson %d, current block version %d", prev.body.Version, b.body.Version)
 		}
 
-		if b.Height != prev.Height+1 {
-			return errors.WithDetailf(errMisorderedBlockHeight, "previous block height %d, current block height %d", prev.Height, b.Height)
+		if b.body.Height != prev.body.Height+1 {
+			return errors.WithDetailf(errMisorderedBlockHeight, "previous block height %d, current block height %d", prev.body.Height, b.body.Height)
 		}
 
-		if prev.ID != b.PreviousBlockID {
-			return errors.WithDetailf(errMismatchedBlock, "previous block ID %x, current block wants %x", prev.ID[:], b.PreviousBlockID[:])
+		if prev.ID != b.body.PreviousBlockID {
+			return errors.WithDetailf(errMismatchedBlock, "previous block ID %x, current block wants %x", prev.ID[:], b.body.PreviousBlockID[:])
 		}
 
-		if b.TimestampMS <= prev.TimestampMS {
-			return errors.WithDetailf(errMisorderedBlockTime, "previous block time %d, current block time %d", prev.TimestampMS, b.TimestampMS)
+		if b.body.TimestampMS <= prev.body.TimestampMS {
+			return errors.WithDetailf(errMisorderedBlockTime, "previous block time %d, current block time %d", prev.body.TimestampMS, b.body.TimestampMS)
 		}
 
 		if runProg {
-			vmContext := newBlockVMContext(b, prev.NextConsensusProgram, b.Arguments)
+			vmContext := newBlockVMContext(b, prev.body.NextConsensusProgram, b.witness.Arguments)
 			err := vm.Verify(vmContext)
 			if err != nil {
 				return errors.Wrap(err, "evaluating previous block's next consensus program")
@@ -77,14 +77,14 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) err
 	}
 
 	for i, tx := range b.Transactions {
-		if b.Version == 1 && tx.Version != 1 {
-			return errors.WithDetailf(errTxVersion, "block version %d, transaction version %d", b.Version, tx.Version)
+		if b.body.Version == 1 && tx.body.Version != 1 {
+			return errors.WithDetailf(errTxVersion, "block version %d, transaction version %d", b.body.Version, tx.body.Version)
 		}
-		if tx.MaxTimeMS > 0 && b.TimestampMS > tx.MaxTimeMS {
-			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", b.TimestampMS, tx.MinTimeMS, tx.MaxTimeMS)
+		if tx.body.MaxTimeMS > 0 && b.body.TimestampMS > tx.body.MaxTimeMS {
+			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", b.body.TimestampMS, tx.body.MinTimeMS, tx.body.MaxTimeMS)
 		}
-		if tx.MinTimeMS > 0 && b.TimestampMS > 0 && b.TimestampMS < tx.MinTimeMS {
-			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", b.TimestampMS, tx.MinTimeMS, tx.MaxTimeMS)
+		if tx.body.MinTimeMS > 0 && b.body.TimestampMS > 0 && b.body.TimestampMS < tx.body.MinTimeMS {
+			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", b.body.TimestampMS, tx.body.MinTimeMS, tx.body.MaxTimeMS)
 		}
 
 		ctx = context.WithValue(ctx, vcCurrentEntryID, tx.ID)
@@ -100,8 +100,8 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) err
 		return errors.Wrap(err, "computing transaction merkle root")
 	}
 
-	if txRoot != b.TransactionsRoot {
-		return errors.WithDetailf(errMismatchedMerkleRoot, "computed %x, current block wants %x", txRoot[:], b.TransactionsRoot[:])
+	if txRoot != b.body.TransactionsRoot {
+		return errors.WithDetailf(errMismatchedMerkleRoot, "computed %x, current block wants %x", txRoot[:], b.body.TransactionsRoot[:])
 	}
 
 	return nil
