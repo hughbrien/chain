@@ -3,6 +3,7 @@ package bc
 import (
 	"chain/errors"
 	"chain/protocol/vm"
+	"context"
 )
 
 // Spend accesses the value in a prior Output for transfer

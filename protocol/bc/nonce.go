@@ -3,6 +3,7 @@ package bc
 import (
 	"chain/errors"
 	"chain/protocol/vm"
+	"context"
 )
 
 // Nonce contains data used, among other things, for distinguishing

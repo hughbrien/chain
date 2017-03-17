@@ -1,6 +1,9 @@
 package bc
 
-import "chain/errors"
+import (
+	"chain/errors"
+	"context"
+)
 
 // TxHeader contains header information for a transaction. Every
 // transaction on a blockchain contains exactly one TxHeader. The ID
@@ -62,9 +65,14 @@ func NewTxHeader(version uint64, results []Entry, data Hash, minTimeMS, maxTimeM
 }
 
 func (tx *TxHeader) CheckValid(ctx context.Context) error {
-	// blockVersion and timestampMS are present only when validating in a block context.
-	blockVersion, _ := ctx.Value(vcBlockVersion).(uint64)
-	timestampMS, _ := ctx.Value(vcTimestampMS).(uint64)
+	// txvInfo is present only when validating in a block context
+	txvInfo, _ := ctx.Value(vcTxValidationInfo).(*txValidationInfo)
+
+	var blockVersion, timestampMS uint64
+	if txvInfo != nil {
+		blockVersion = txvInfo.blockVersion
+		timestampMS = txvInfo.timestampMS
+	}
 
 	if blockVersion == 1 && tx.body.Version != 1 {
 		return errors.WithDetailf(errTxVersion, "block version %d, transaction version %d", blockVersion, tx.body.Version)

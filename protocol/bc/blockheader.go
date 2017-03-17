@@ -81,7 +81,9 @@ func NewBlockHeaderEntry(version, height uint64, previousBlockID Hash, timestamp
 }
 
 func (bh *BlockHeaderEntry) CheckValid(ctx context.Context) error {
-	prevBlockHeader, _ := ctx.Value(vcPrevBlockHeader).(*BlockHeaderEntry)
+	bvInfo, _ := ctx.Value(vcBlockValidationInfo).(*blockValidationInfo)
+
+	prevBlockHeader := bvInfo.prevBlockHeader
 
 	if prevBlockHeader == nil {
 		if bh.body.Height != 1 {
@@ -96,7 +98,8 @@ func (bh *BlockHeaderEntry) CheckValid(ctx context.Context) error {
 			return errors.WithDetailf(errMisorderedBlockHeight, "previous block height %d, current block height %d", prevBlockHeader.body.Height, bh.body.Height)
 		}
 
-		prevBlockHeaderID, _ := ctx.Value(vcPrevBlockHeaderID).(Hash)
+		prevBlockHeaderID := bvInfo.prevBlockHeaderID
+
 		if prevBlockHeaderID != bh.body.PreviousBlockID {
 			return errors.WithDetailf(errMismatchedBlock, "previous block ID %x, current block wants %x", prevBlockHeaderID[:], bh.body.PreviousBlockID[:])
 		}
@@ -105,7 +108,8 @@ func (bh *BlockHeaderEntry) CheckValid(ctx context.Context) error {
 			return errors.WithDetailf(errMisorderedBlockTime, "previous block time %d, current block time %d", prevBlockHeader.body.TimestampMS, bh.body.TimestampMS)
 		}
 
-		blockVMContext, _ := ctx.Value(vcBlockVMContext).(*blockVMContext)
+		blockVMContext := bvInfo.blockVMContext
+
 		if blockVMContext != nil {
 			err := vm.Verify(blockVMContext)
 			if err != nil {
@@ -114,10 +118,14 @@ func (bh *BlockHeaderEntry) CheckValid(ctx context.Context) error {
 		}
 	}
 
-	ctx = context.WithValue(ctx, vcBlockVersion, bh.body.Version)
-	ctx = context.WithValue(ctx, vcTimestampMS, bh.body.TimestampMS)
+	blockTxs := bvInfo.blockTxs
 
-	blockTxs, _ := ctx.Value(vcBlockTxs).([]*TxEntries)
+	txvInfo := &txValidationInfo{
+		blockVersion: bh.body.Version,
+		timestampMS:  bh.body.TimestampMS,
+	}
+	ctx = context.WithValue(ctx, vcTxValidationInfo, txvInfo)
+
 	for i, tx := range blockTxs {
 		ctx = context.WithValue(ctx, vcCurrentEntryID, tx.ID)
 		ctx = context.WithValue(ctx, vcCurrentTx, tx)

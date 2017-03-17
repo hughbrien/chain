@@ -3,6 +3,7 @@ package bc
 import (
 	"chain/errors"
 	"chain/protocol/vm"
+	"context"
 )
 
 // Issuance is a source of new value on a blockchain. It satisfies the

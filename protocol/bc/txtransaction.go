@@ -1,6 +1,7 @@
 package bc
 
 import (
+	"context"
 	"fmt"
 
 	"chain/crypto/sha3pool"
@@ -24,22 +25,13 @@ type TxEntries struct {
 // TxEntries.CheckValid. This one is more suitable for calling from
 // the top level; CheckValid is preferred in a nested validation
 // context (such as when validating all the transactions in a block).
-func ValidateTx(tx *TxEntries, blockVersion uint64, initialBlockID Hash, blockTimestampMS uint64) error {
-	state := &validationState{
-		blockVersion:   blockVersion,
-		initialBlockID: initialBlockID,
-		currentTx:      tx,
-		currentEntryID: tx.ID,
-		timestampMS:    blockTimestampMS,
-	}
-	return tx.TxHeader.CheckValid(state)
+func ValidateTx(tx *TxEntries, initialBlockID Hash) error {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, vcInitialBlockID, initialBlockID)
+	return tx.TxHeader.CheckValid(ctx)
 }
 
-func (tx *TxEntries) CheckValid(state *validationState) error {
-	var newState validationState
-	if state != nil {
-		newState = *state
-	}
+func (tx *TxEntries) CheckValid(ctx context.Context) error {
 	ctx = context.WithValue(ctx, vcCurrentTx, tx)
 	ctx = context.WithValue(ctx, vcCurrentEntryID, tx.ID)
 	return tx.TxHeader.CheckValid(ctx)

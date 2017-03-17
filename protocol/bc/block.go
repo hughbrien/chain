@@ -43,25 +43,17 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) err
 	}
 
 	bvInfo := &blockValidationInfo{
-		prevBlockHeader: prev.BlockHeaderEntry,
+		prevBlockHeader:   prev.BlockHeaderEntry,
 		prevBlockHeaderID: b.body.PreviousBlockID,
-		blockVMContext: vmContext,
-		blockTxs: b.Transactions,
+		blockVMContext:    vmContext,
+		blockTxs:          b.Transactions,
 	}
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, vcBlockValidationInfo, bvInfo)
+	ctx = context.WithValue(ctx, vcInitialBlockID, initialBlockID)
 
-	state := &validationState{
-		blockVersion:      b.body.Version,
-		initialBlockID:    initialBlockID,
-		timestampMS:       b.body.TimestampMS,
-		prevBlockHeader:   prev.BlockHeaderEntry,
-		prevBlockHeaderID: b.body.PreviousBlockID,
-		blockTxs:          b.Transactions,
-		blockVMContext:    vmContext,
-	}
-	return b.BlockHeaderEntry.CheckValid(state)
+	return b.BlockHeaderEntry.CheckValid(ctx)
 }
 
 // MarshalText fulfills the json.Marshaler interface.

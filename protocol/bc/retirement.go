@@ -1,6 +1,9 @@
 package bc
 
-import "chain/errors"
+import (
+	"chain/errors"
+	"context"
+)
 
 // Retirement is for the permanent removal of some value from a
 // blockchain. The value it contains can never be obtained by later
