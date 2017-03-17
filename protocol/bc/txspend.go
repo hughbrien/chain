@@ -11,14 +11,14 @@ import (
 //
 // (Not to be confused with the deprecated type SpendInput.)
 type Spend struct {
-	body struct {
+	Body struct {
 		SpentOutputID Hash // the hash of an output entry
 		Data          Hash
 		ExtHash       Hash
 	}
 	ordinal int
 
-	witness struct {
+	Witness struct {
 		Destination ValueDestination
 		Arguments   [][]byte
 		AnchoredID  Hash
@@ -34,55 +34,23 @@ type Spend struct {
 }
 
 func (Spend) Type() string         { return "spend1" }
-func (s *Spend) Body() interface{} { return s.body }
+func (s *Spend) body() interface{} { return s.Body }
 
 func (s Spend) Ordinal() int { return s.ordinal }
 
-func (s *Spend) SpentOutputID() Hash {
-	return s.body.SpentOutputID
-}
-
-func (s *Spend) Data() Hash {
-	return s.body.Data
-}
-
-func (s *Spend) AssetID() AssetID {
-	return s.SpentOutput.AssetID()
-}
-
-func (s *Spend) ControlProgram() Program {
-	return s.SpentOutput.ControlProgram()
-}
-
-func (s *Spend) Amount() uint64 {
-	return s.SpentOutput.Amount()
-}
-
-func (s *Spend) Destination() ValueDestination {
-	return s.witness.Destination
-}
-
-func (s *Spend) Arguments() [][]byte {
-	return s.witness.Arguments
-}
-
 func (s *Spend) SetDestination(id Hash, pos uint64, e Entry) {
-	s.witness.Destination = ValueDestination{
+	s.Witness.Destination = ValueDestination{
 		Ref:      id,
 		Position: pos,
 		Entry:    e,
 	}
 }
 
-func (s *Spend) SetArguments(args [][]byte) {
-	s.witness.Arguments = args
-}
-
 // NewSpend creates a new Spend.
 func NewSpend(out *Output, data Hash, ordinal int) *Spend {
 	s := new(Spend)
-	s.body.SpentOutputID = EntryID(out)
-	s.body.Data = data
+	s.Body.SpentOutputID = EntryID(out)
+	s.Body.Data = data
 	s.ordinal = ordinal
 	s.SpentOutput = out
 	return s
@@ -92,29 +60,29 @@ func (s *Spend) CheckValid(ctx context.Context) error {
 	// xxx SpentOutput "present"
 
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(newTxVMContext(currentTx, s, s.SpentOutput.body.ControlProgram, s.witness.Arguments))
+	err := vm.Verify(newTxVMContext(currentTx, s, s.SpentOutput.Body.ControlProgram, s.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking control program")
 	}
 
-	if s.SpentOutput.body.Source.Value != s.witness.Destination.Value {
+	if s.SpentOutput.Body.Source.Value != s.Witness.Destination.Value {
 		return errors.WithDetailf(
 			errMismatchedValue,
 			"previous output is for %d unit(s) of %x, spend wants %d unit(s) of %x",
-			s.SpentOutput.body.Source.Value.Amount,
-			s.SpentOutput.body.Source.Value.AssetID[:],
-			s.witness.Destination.Value.Amount,
-			s.witness.Destination.Value.AssetID[:],
+			s.SpentOutput.Body.Source.Value.Amount,
+			s.SpentOutput.Body.Source.Value.AssetID[:],
+			s.Witness.Destination.Value.Amount,
+			s.Witness.Destination.Value.AssetID[:],
 		)
 	}
 
 	ctx = context.WithValue(ctx, vcDestPos, 0)
-	err = s.witness.Destination.CheckValid(ctx)
+	err = s.Witness.Destination.CheckValid(ctx)
 	if err != nil {
 		return errors.Wrap(err, "checking spend destination")
 	}
 
-	if currentTx.body.Version == 1 && (s.body.ExtHash != Hash{}) {
+	if currentTx.Body.Version == 1 && (s.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

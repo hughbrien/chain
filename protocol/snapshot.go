@@ -76,7 +76,7 @@ func NewSnapshot() *Snapshot {
 
 // ApplyBlock updates s in place.
 func (s *Snapshot) ApplyBlock(block *bc.BlockEntries) error {
-	s.PruneNonces(block.TimestampMS())
+	s.PruneNonces(block.Body.TimestampMS)
 	for i, tx := range block.Transactions {
 		err := tx.Apply(s)
 		if err != nil {

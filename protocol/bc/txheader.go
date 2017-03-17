@@ -10,7 +10,7 @@ import (
 // of the TxHeader is the ID of the transaction. TxHeader satisfies
 // the Entry interface.
 type TxHeader struct {
-	body struct {
+	Body struct {
 		Version              uint64
 		ResultIDs            []Hash
 		Data                 Hash
@@ -24,41 +24,21 @@ type TxHeader struct {
 }
 
 func (TxHeader) Type() string         { return "txheader" }
-func (h *TxHeader) Body() interface{} { return h.body }
+func (h *TxHeader) body() interface{} { return h.Body }
 
 func (TxHeader) Ordinal() int { return -1 }
-
-func (h *TxHeader) Version() uint64 {
-	return h.body.Version
-}
-
-func (h *TxHeader) Data() Hash {
-	return h.body.Data
-}
-
-func (h *TxHeader) ResultID(n uint32) Hash {
-	return h.body.ResultIDs[n]
-}
-
-func (h *TxHeader) MinTimeMS() uint64 {
-	return h.body.MinTimeMS
-}
-
-func (h *TxHeader) MaxTimeMS() uint64 {
-	return h.body.MaxTimeMS
-}
 
 // NewTxHeader creates an new TxHeader.
 func NewTxHeader(version uint64, results []Entry, data Hash, minTimeMS, maxTimeMS uint64) *TxHeader {
 	h := new(TxHeader)
-	h.body.Version = version
-	h.body.Data = data
-	h.body.MinTimeMS = minTimeMS
-	h.body.MaxTimeMS = maxTimeMS
+	h.Body.Version = version
+	h.Body.Data = data
+	h.Body.MinTimeMS = minTimeMS
+	h.Body.MaxTimeMS = maxTimeMS
 
 	h.Results = results
 	for _, r := range results {
-		h.body.ResultIDs = append(h.body.ResultIDs, EntryID(r))
+		h.Body.ResultIDs = append(h.Body.ResultIDs, EntryID(r))
 	}
 
 	return h
@@ -66,13 +46,13 @@ func NewTxHeader(version uint64, results []Entry, data Hash, minTimeMS, maxTimeM
 
 // CheckValid does only part of the work of validating a tx header. The block-related parts of tx validation are in ValidateBlock.
 func (tx *TxHeader) CheckValid(ctx context.Context) error {
-	if tx.body.MaxTimeMS > 0 {
-		if tx.body.MaxTimeMS < tx.body.MinTimeMS {
-			return errors.WithDetailf(errBadTimeRange, "min time %d, max time %d", tx.body.MinTimeMS, tx.body.MaxTimeMS)
+	if tx.Body.MaxTimeMS > 0 {
+		if tx.Body.MaxTimeMS < tx.Body.MinTimeMS {
+			return errors.WithDetailf(errBadTimeRange, "min time %d, max time %d", tx.Body.MinTimeMS, tx.Body.MaxTimeMS)
 		}
 	}
 
-	for i, resID := range tx.body.ResultIDs {
+	for i, resID := range tx.Body.ResultIDs {
 		res := tx.Results[i]
 		ctx = context.WithValue(ctx, vcCurrentEntryID, resID)
 		err := res.CheckValid(ctx)
@@ -81,12 +61,12 @@ func (tx *TxHeader) CheckValid(ctx context.Context) error {
 		}
 	}
 
-	if tx.body.Version == 1 {
-		if len(tx.body.ResultIDs) == 0 {
+	if tx.Body.Version == 1 {
+		if len(tx.Body.ResultIDs) == 0 {
 			return errEmptyResults
 		}
 
-		if (tx.body.ExtHash != Hash{}) {
+		if (tx.Body.ExtHash != Hash{}) {
 			return errNonemptyExtHash
 		}
 	}

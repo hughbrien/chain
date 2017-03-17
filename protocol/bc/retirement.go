@@ -9,53 +9,37 @@ import (
 // blockchain. The value it contains can never be obtained by later
 // entries. Retirement satisfies the Entry interface.
 type Retirement struct {
-	body struct {
-		Source  valueSource
+	Body struct {
+		Source  ValueSource
 		Data    Hash
 		ExtHash Hash
 	}
 	ordinal int
-
-	// Source contains (a pointer to) the manifested entry corresponding
-	// to body.Source.
-	Source Entry // *issuance, *spend, or *mux
 }
 
 func (Retirement) Type() string         { return "retirement1" }
-func (r *Retirement) Body() interface{} { return r.body }
+func (r *Retirement) body() interface{} { return r.Body }
 
 func (r Retirement) Ordinal() int { return r.ordinal }
 
-func (r *Retirement) AssetID() AssetID {
-	return r.body.Source.Value.AssetID
-}
-
-func (r *Retirement) Amount() uint64 {
-	return r.body.Source.Value.Amount
-}
-
-func (r *Retirement) Data() Hash {
-	return r.body.Data
-}
-
 // NewRetirement creates a new Retirement.
-func NewRetirement(source valueSource, data Hash, ordinal int) *Retirement {
+func NewRetirement(source ValueSource, data Hash, ordinal int) *Retirement {
 	r := new(Retirement)
-	r.body.Source = source
-	r.body.Data = data
+	r.Body.Source = source
+	r.Body.Data = data
 	r.ordinal = ordinal
 	return r
 }
 
 func (r *Retirement) CheckValid(ctx context.Context) error {
 	ctx = context.WithValue(ctx, vcSourcePos, 0)
-	err := r.body.Source.CheckValid(ctx)
+	err := r.Body.Source.CheckValid(ctx)
 	if err != nil {
 		return errors.Wrap(err, "checking retirement source")
 	}
 
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	if currentTx.body.Version == 1 && (r.body.ExtHash != Hash{}) {
+	if currentTx.Body.Version == 1 && (r.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

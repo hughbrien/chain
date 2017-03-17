@@ -10,13 +10,13 @@ import (
 // otherwise-identical issuances (when used as those issuances'
 // "anchors"). It satisfies the Entry interface.
 type Nonce struct {
-	body struct {
+	Body struct {
 		Program     Program
 		TimeRangeID Hash
 		ExtHash     Hash
 	}
 
-	witness struct {
+	Witness struct {
 		Arguments  [][]byte
 		AnchoredID Hash
 	}
@@ -31,33 +31,33 @@ type Nonce struct {
 }
 
 func (Nonce) Type() string         { return "nonce1" }
-func (n *Nonce) Body() interface{} { return n.body }
+func (n *Nonce) body() interface{} { return n.Body }
 
 func (Nonce) Ordinal() int { return -1 }
 
 // NewNonce creates a new Nonce.
 func NewNonce(p Program, tr *TimeRange) *Nonce {
 	n := new(Nonce)
-	n.body.Program = p
-	n.body.TimeRangeID = EntryID(tr)
+	n.Body.Program = p
+	n.Body.TimeRangeID = EntryID(tr)
 	n.TimeRange = tr
 	return n
 }
 
 func (n *Nonce) CheckValid(ctx context.Context) error {
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(newTxVMContext(currentTx, n, n.body.Program, n.witness.Arguments))
+	err := vm.Verify(newTxVMContext(currentTx, n, n.Body.Program, n.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking nonce program")
 	}
 
 	// xxx recursively validate the timerange?
 
-	if n.TimeRange.body.MinTimeMS == 0 || n.TimeRange.body.MaxTimeMS == 0 {
+	if n.TimeRange.Body.MinTimeMS == 0 || n.TimeRange.Body.MaxTimeMS == 0 {
 		return errZeroTime
 	}
 
-	if currentTx.body.Version == 1 && (n.body.ExtHash != Hash{}) {
+	if currentTx.Body.Version == 1 && (n.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

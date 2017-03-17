@@ -11,7 +11,7 @@ import (
 //
 // (Not to be confused with the deprecated type IssuanceInput.)
 type Issuance struct {
-	body struct {
+	Body struct {
 		AnchorID Hash
 		Value    AssetAmount
 		Data     Hash
@@ -19,7 +19,7 @@ type Issuance struct {
 	}
 	ordinal int
 
-	witness struct {
+	Witness struct {
 		Destination     ValueDestination
 		AssetDefinition AssetDefinition
 		Arguments       [][]byte
@@ -36,90 +36,42 @@ type Issuance struct {
 }
 
 func (Issuance) Type() string           { return "issuance1" }
-func (iss *Issuance) Body() interface{} { return iss.body }
+func (iss *Issuance) body() interface{} { return iss.Body }
 
 func (iss Issuance) Ordinal() int { return iss.ordinal }
 
-func (iss *Issuance) AnchorID() Hash {
-	return iss.body.AnchorID
-}
-
-func (iss *Issuance) Data() Hash {
-	return iss.body.Data
-}
-
-func (iss *Issuance) AssetID() AssetID {
-	return iss.body.Value.AssetID
-}
-
-func (iss *Issuance) Amount() uint64 {
-	return iss.body.Value.Amount
-}
-
-func (iss *Issuance) Destination() ValueDestination {
-	return iss.witness.Destination
-}
-
-func (iss *Issuance) InitialBlockID() Hash {
-	return iss.witness.AssetDefinition.InitialBlockID
-}
-
-func (iss *Issuance) IssuanceProgram() Program {
-	return iss.witness.AssetDefinition.IssuanceProgram
-}
-
-func (iss *Issuance) Arguments() [][]byte {
-	return iss.witness.Arguments
-}
-
 func (iss *Issuance) SetDestination(id Hash, pos uint64, e Entry) {
-	iss.witness.Destination = ValueDestination{
+	iss.Witness.Destination = ValueDestination{
 		Ref:      id,
 		Position: pos,
 		Entry:    e,
 	}
 }
 
-func (iss *Issuance) SetInitialBlockID(hash Hash) {
-	iss.witness.AssetDefinition.InitialBlockID = hash
-}
-
-func (iss *Issuance) SetAssetDefinitionHash(hash Hash) {
-	iss.witness.AssetDefinition.Data = hash
-}
-
-func (iss *Issuance) SetIssuanceProgram(prog Program) {
-	iss.witness.AssetDefinition.IssuanceProgram = prog
-}
-
-func (iss *Issuance) SetArguments(args [][]byte) {
-	iss.witness.Arguments = args
-}
-
 // NewIssuance creates a new Issuance.
 func NewIssuance(anchor Entry, value AssetAmount, data Hash, ordinal int) *Issuance {
 	iss := new(Issuance)
-	iss.body.AnchorID = EntryID(anchor)
+	iss.Body.AnchorID = EntryID(anchor)
 	iss.Anchor = anchor
-	iss.body.Value = value
-	iss.body.Data = data
+	iss.Body.Value = value
+	iss.Body.Data = data
 	iss.ordinal = ordinal
 	return iss
 }
 
 func (iss *Issuance) CheckValid(ctx context.Context) error {
 	initialBlockID, _ := ctx.Value(vcInitialBlockID).(Hash)
-	if iss.witness.AssetDefinition.InitialBlockID != initialBlockID {
-		return errors.WithDetailf(errWrongBlockchain, "current blockchain %x, asset defined on blockchain %x", initialBlockID[:], iss.witness.AssetDefinition.InitialBlockID[:])
+	if iss.Witness.AssetDefinition.InitialBlockID != initialBlockID {
+		return errors.WithDetailf(errWrongBlockchain, "current blockchain %x, asset defined on blockchain %x", initialBlockID[:], iss.Witness.AssetDefinition.InitialBlockID[:])
 	}
 
-	computedAssetID := iss.witness.AssetDefinition.ComputeAssetID()
-	if computedAssetID != iss.body.Value.AssetID {
-		return errors.WithDetailf(errMismatchedAssetID, "asset ID is %x, issuance wants %x", computedAssetID[:], iss.body.Value.AssetID[:])
+	computedAssetID := iss.Witness.AssetDefinition.ComputeAssetID()
+	if computedAssetID != iss.Body.Value.AssetID {
+		return errors.WithDetailf(errMismatchedAssetID, "asset ID is %x, issuance wants %x", computedAssetID[:], iss.Body.Value.AssetID[:])
 	}
 
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(newTxVMContext(currentTx, iss, iss.witness.AssetDefinition.IssuanceProgram, iss.witness.Arguments))
+	err := vm.Verify(newTxVMContext(currentTx, iss, iss.Witness.AssetDefinition.IssuanceProgram, iss.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking issuance program")
 	}
@@ -127,13 +79,13 @@ func (iss *Issuance) CheckValid(ctx context.Context) error {
 	var anchored Hash
 	switch a := iss.Anchor.(type) {
 	case *Nonce:
-		anchored = a.witness.AnchoredID
+		anchored = a.Witness.AnchoredID
 
 	case *Spend:
-		anchored = a.witness.AnchoredID
+		anchored = a.Witness.AnchoredID
 
 	case *Issuance:
-		anchored = a.witness.AnchoredID
+		anchored = a.Witness.AnchoredID
 
 	default:
 		return errors.WithDetailf(errEntryType, "issuance anchor has type %T, should be nonce, spend, or issuance", iss.Anchor)
@@ -144,19 +96,19 @@ func (iss *Issuance) CheckValid(ctx context.Context) error {
 		return errors.WithDetailf(errMismatchedReference, "issuance %x anchor is for %x", currentEntryID[:], anchored[:])
 	}
 
-	anchorCtx := context.WithValue(ctx, vcCurrentEntryID, iss.body.AnchorID)
+	anchorCtx := context.WithValue(ctx, vcCurrentEntryID, iss.Body.AnchorID)
 	err = iss.Anchor.CheckValid(anchorCtx)
 	if err != nil {
 		return errors.Wrap(err, "checking issuance anchor")
 	}
 
 	destCtx := context.WithValue(ctx, vcDestPos, 0)
-	err = iss.witness.Destination.CheckValid(destCtx)
+	err = iss.Witness.Destination.CheckValid(destCtx)
 	if err != nil {
 		return errors.Wrap(err, "checking issuance destination")
 	}
 
-	if currentTx.body.Version == 1 && (iss.body.ExtHash != Hash{}) {
+	if currentTx.Body.Version == 1 && (iss.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

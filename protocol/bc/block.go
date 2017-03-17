@@ -39,28 +39,28 @@ type BlockEntries struct {
 
 func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) error {
 	if prev == nil {
-		if b.body.Height != 1 {
-			return errors.WithDetailf(errNoPrevBlock, "height %d", b.body.Height)
+		if b.Body.Height != 1 {
+			return errors.WithDetailf(errNoPrevBlock, "height %d", b.Body.Height)
 		}
 	} else {
-		if b.body.Version < prev.body.Version {
-			return errors.WithDetailf(errVersionRegression, "previous block verson %d, current block version %d", prev.body.Version, b.body.Version)
+		if b.Body.Version < prev.Body.Version {
+			return errors.WithDetailf(errVersionRegression, "previous block verson %d, current block version %d", prev.Body.Version, b.Body.Version)
 		}
 
-		if b.body.Height != prev.body.Height+1 {
-			return errors.WithDetailf(errMisorderedBlockHeight, "previous block height %d, current block height %d", prev.body.Height, b.body.Height)
+		if b.Body.Height != prev.Body.Height+1 {
+			return errors.WithDetailf(errMisorderedBlockHeight, "previous block height %d, current block height %d", prev.Body.Height, b.Body.Height)
 		}
 
-		if prev.ID != b.body.PreviousBlockID {
-			return errors.WithDetailf(errMismatchedBlock, "previous block ID %x, current block wants %x", prev.ID[:], b.body.PreviousBlockID[:])
+		if prev.ID != b.Body.PreviousBlockID {
+			return errors.WithDetailf(errMismatchedBlock, "previous block ID %x, current block wants %x", prev.ID[:], b.Body.PreviousBlockID[:])
 		}
 
-		if b.body.TimestampMS <= prev.body.TimestampMS {
-			return errors.WithDetailf(errMisorderedBlockTime, "previous block time %d, current block time %d", prev.body.TimestampMS, b.body.TimestampMS)
+		if b.Body.TimestampMS <= prev.Body.TimestampMS {
+			return errors.WithDetailf(errMisorderedBlockTime, "previous block time %d, current block time %d", prev.Body.TimestampMS, b.Body.TimestampMS)
 		}
 
 		if runProg {
-			vmContext := newBlockVMContext(b, prev.body.NextConsensusProgram, b.witness.Arguments)
+			vmContext := newBlockVMContext(b, prev.Body.NextConsensusProgram, b.Witness.Arguments)
 			err := vm.Verify(vmContext)
 			if err != nil {
 				return errors.Wrap(err, "evaluating previous block's next consensus program")
@@ -77,14 +77,14 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) err
 	}
 
 	for i, tx := range b.Transactions {
-		if b.body.Version == 1 && tx.body.Version != 1 {
-			return errors.WithDetailf(errTxVersion, "block version %d, transaction version %d", b.body.Version, tx.body.Version)
+		if b.Body.Version == 1 && tx.Body.Version != 1 {
+			return errors.WithDetailf(errTxVersion, "block version %d, transaction version %d", b.Body.Version, tx.Body.Version)
 		}
-		if tx.body.MaxTimeMS > 0 && b.body.TimestampMS > tx.body.MaxTimeMS {
-			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", b.body.TimestampMS, tx.body.MinTimeMS, tx.body.MaxTimeMS)
+		if tx.Body.MaxTimeMS > 0 && b.Body.TimestampMS > tx.Body.MaxTimeMS {
+			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", b.Body.TimestampMS, tx.Body.MinTimeMS, tx.Body.MaxTimeMS)
 		}
-		if tx.body.MinTimeMS > 0 && b.body.TimestampMS > 0 && b.body.TimestampMS < tx.body.MinTimeMS {
-			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", b.body.TimestampMS, tx.body.MinTimeMS, tx.body.MaxTimeMS)
+		if tx.Body.MinTimeMS > 0 && b.Body.TimestampMS > 0 && b.Body.TimestampMS < tx.Body.MinTimeMS {
+			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", b.Body.TimestampMS, tx.Body.MinTimeMS, tx.Body.MaxTimeMS)
 		}
 
 		ctx = context.WithValue(ctx, vcCurrentEntryID, tx.ID)
@@ -100,8 +100,8 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) err
 		return errors.Wrap(err, "computing transaction merkle root")
 	}
 
-	if txRoot != b.body.TransactionsRoot {
-		return errors.WithDetailf(errMismatchedMerkleRoot, "computed %x, current block wants %x", txRoot[:], b.body.TransactionsRoot[:])
+	if txRoot != b.Body.TransactionsRoot {
+		return errors.WithDetailf(errMismatchedMerkleRoot, "computed %x, current block wants %x", txRoot[:], b.Body.TransactionsRoot[:])
 	}
 
 	return nil

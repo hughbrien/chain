@@ -11,43 +11,39 @@ import (
 // making it available to one or more destination entries. It
 // satisfies the Entry interface.
 type Mux struct {
-	body struct {
-		Sources []valueSource // issuances, spends, and muxes
+	Body struct {
+		Sources []ValueSource // issuances, spends, and muxes
 		Program Program
 		ExtHash Hash
 	}
 
-	witness struct {
+	Witness struct {
 		Destinations []ValueDestination // outputs, retirements, and muxes
 		Arguments    [][]byte
 	}
 }
 
 func (Mux) Type() string         { return "mux1" }
-func (m *Mux) Body() interface{} { return m.body }
+func (m *Mux) body() interface{} { return m.Body }
 
 func (Mux) Ordinal() int { return -1 }
 
-func (m *Mux) Destinations() []ValueDestination {
-	return m.witness.Destinations
-}
-
 // NewMux creates a new Mux.
-func NewMux(sources []valueSource, program Program) *Mux {
+func NewMux(sources []ValueSource, program Program) *Mux {
 	m := new(Mux)
-	m.body.Sources = sources
-	m.body.Program = program
+	m.Body.Sources = sources
+	m.Body.Program = program
 	return m
 }
 
 func (mux *Mux) CheckValid(ctx context.Context) error {
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(newTxVMContext(currentTx, mux, mux.body.Program, mux.witness.Arguments))
+	err := vm.Verify(newTxVMContext(currentTx, mux, mux.Body.Program, mux.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking mux program")
 	}
 
-	for i, src := range mux.body.Sources {
+	for i, src := range mux.Body.Sources {
 		ctx = context.WithValue(ctx, vcSourcePos, uint64(i))
 		err := src.CheckValid(ctx)
 		if err != nil {
@@ -55,7 +51,7 @@ func (mux *Mux) CheckValid(ctx context.Context) error {
 		}
 	}
 
-	for i, dest := range mux.witness.Destinations {
+	for i, dest := range mux.Witness.Destinations {
 		ctx = context.WithValue(ctx, vcDestPos, uint64(i))
 		err := dest.CheckValid(ctx)
 		if err != nil {
@@ -64,7 +60,7 @@ func (mux *Mux) CheckValid(ctx context.Context) error {
 	}
 
 	parity := make(map[AssetID]int64)
-	for i, src := range mux.body.Sources {
+	for i, src := range mux.Body.Sources {
 		sum, ok := checked.AddInt64(parity[src.Value.AssetID], int64(src.Value.Amount))
 		if !ok {
 			return errors.WithDetailf(errOverflow, "adding %d units of asset %x from mux source %d to total %d overflows int64", src.Value.Amount, src.Value.AssetID[:], i, parity[src.Value.AssetID])
@@ -72,7 +68,7 @@ func (mux *Mux) CheckValid(ctx context.Context) error {
 		parity[src.Value.AssetID] = sum
 	}
 
-	for i, dest := range mux.witness.Destinations {
+	for i, dest := range mux.Witness.Destinations {
 		sum, ok := parity[dest.Value.AssetID]
 		if !ok {
 			return errors.WithDetailf(errNoSource, "mux destination %d, asset %x, has no corresponding source", i, dest.Value.AssetID[:])
@@ -91,7 +87,7 @@ func (mux *Mux) CheckValid(ctx context.Context) error {
 		}
 	}
 
-	if currentTx.body.Version == 1 && (mux.body.ExtHash != Hash{}) {
+	if currentTx.Body.Version == 1 && (mux.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 
