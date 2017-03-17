@@ -12,14 +12,14 @@ import (
 type TxHeader struct {
 	body struct {
 		Version              uint64
-		Results              []Hash
+		ResultIDs            []Hash
 		Data                 Hash
 		MinTimeMS, MaxTimeMS uint64
 		ExtHash              Hash
 	}
 
 	// Results contains (pointers to) the manifested entries for the
-	// items in body.Results.
+	// items in body.ResultIDs.
 	Results []Entry // each entry is *output or *retirement
 }
 
@@ -37,7 +37,7 @@ func (h *TxHeader) Data() Hash {
 }
 
 func (h *TxHeader) ResultID(n uint32) Hash {
-	return h.body.Results[n]
+	return h.body.ResultIDs[n]
 }
 
 func (h *TxHeader) MinTimeMS() uint64 {
@@ -58,15 +58,13 @@ func NewTxHeader(version uint64, results []Entry, data Hash, minTimeMS, maxTimeM
 
 	h.Results = results
 	for _, r := range results {
-		h.body.Results = append(h.body.Results, EntryID(r))
+		h.body.ResultIDs = append(h.body.ResultIDs, EntryID(r))
 	}
 
 	return h
 }
 
-// CheckValid does only part of the work of validating a tx
-// header. The block-related parts of tx validation are in
-// ValidateBlock.
+// CheckValid does only part of the work of validating a tx header. The block-related parts of tx validation are in ValidateBlock.
 func (tx *TxHeader) CheckValid(ctx context.Context) error {
 	if tx.body.MaxTimeMS > 0 {
 		if tx.body.MaxTimeMS < tx.body.MinTimeMS {
@@ -74,7 +72,7 @@ func (tx *TxHeader) CheckValid(ctx context.Context) error {
 		}
 	}
 
-	for i, resID := range tx.body.Results {
+	for i, resID := range tx.body.ResultIDs {
 		res := tx.Results[i]
 		ctx = context.WithValue(ctx, vcCurrentEntryID, resID)
 		err := res.CheckValid(ctx)
@@ -84,7 +82,7 @@ func (tx *TxHeader) CheckValid(ctx context.Context) error {
 	}
 
 	if tx.body.Version == 1 {
-		if len(tx.body.Results) == 0 {
+		if len(tx.body.ResultIDs) == 0 {
 			return errEmptyResults
 		}
 

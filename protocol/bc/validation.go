@@ -192,14 +192,14 @@ func (t *txVMContext) DestPos() (uint64, error) {
 
 func (t *txVMContext) AnchorID() ([]byte, error) {
 	if inp, ok := t.entry.(*Issuance); ok {
-		return inp.body.Anchor[:], nil
+		return inp.body.AnchorID[:], nil
 	}
 	return nil, errContext
 }
 
 func (t *txVMContext) SpentOutputID() ([]byte, error) {
 	if inp, ok := t.entry.(*Spend); ok {
-		return inp.body.SpentOutput[:], nil
+		return inp.body.SpentOutputID[:], nil
 	}
 	return nil, errContext
 }

@@ -11,22 +11,22 @@ import (
 // "anchors"). It satisfies the Entry interface.
 type Nonce struct {
 	body struct {
-		Program   Program
-		TimeRange Hash
-		ExtHash   Hash
+		Program     Program
+		TimeRangeID Hash
+		ExtHash     Hash
 	}
 
 	witness struct {
-		Arguments [][]byte
-		Anchored  Hash
+		Arguments  [][]byte
+		AnchoredID Hash
 	}
 
 	// TimeRange contains (a pointer to) the manifested entry
-	// corresponding to body.TimeRange.
+	// corresponding to body.TimeRangeID
 	TimeRange *TimeRange
 
 	// Anchored contains a pointer to the manifested entry corresponding
-	// to witness.Anchored.
+	// to witness.AnchoredID.
 	Anchored Entry
 }
 
@@ -39,7 +39,7 @@ func (Nonce) Ordinal() int { return -1 }
 func NewNonce(p Program, tr *TimeRange) *Nonce {
 	n := new(Nonce)
 	n.body.Program = p
-	n.body.TimeRange = EntryID(tr)
+	n.body.TimeRangeID = EntryID(tr)
 	n.TimeRange = tr
 	return n
 }

@@ -12,24 +12,24 @@ import (
 // (Not to be confused with the deprecated type SpendInput.)
 type Spend struct {
 	body struct {
-		SpentOutput Hash // the hash of an output entry
-		Data        Hash
-		ExtHash     Hash
+		SpentOutputID Hash // the hash of an output entry
+		Data          Hash
+		ExtHash       Hash
 	}
 	ordinal int
 
 	witness struct {
 		Destination ValueDestination
 		Arguments   [][]byte
-		Anchored    Hash
+		AnchoredID  Hash
 	}
 
 	// SpentOutput contains (a pointer to) the manifested entry
-	// corresponding to body.SpentOutput.
+	// corresponding to body.SpentOutputID.
 	SpentOutput *Output
 
 	// Anchored contains a pointer to the manifested entry corresponding
-	// to witness.Anchored.
+	// to witness.AnchoredID.
 	Anchored Entry
 }
 
@@ -39,7 +39,7 @@ func (s *Spend) Body() interface{} { return s.body }
 func (s Spend) Ordinal() int { return s.ordinal }
 
 func (s *Spend) SpentOutputID() Hash {
-	return s.body.SpentOutput
+	return s.body.SpentOutputID
 }
 
 func (s *Spend) Data() Hash {
@@ -81,7 +81,7 @@ func (s *Spend) SetArguments(args [][]byte) {
 // NewSpend creates a new Spend.
 func NewSpend(out *Output, data Hash, ordinal int) *Spend {
 	s := new(Spend)
-	s.body.SpentOutput = EntryID(out)
+	s.body.SpentOutputID = EntryID(out)
 	s.body.Data = data
 	s.ordinal = ordinal
 	s.SpentOutput = out

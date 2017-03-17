@@ -12,10 +12,10 @@ import (
 // (Not to be confused with the deprecated type IssuanceInput.)
 type Issuance struct {
 	body struct {
-		Anchor  Hash
-		Value   AssetAmount
-		Data    Hash
-		ExtHash Hash
+		AnchorID Hash
+		Value    AssetAmount
+		Data     Hash
+		ExtHash  Hash
 	}
 	ordinal int
 
@@ -23,15 +23,15 @@ type Issuance struct {
 		Destination     ValueDestination
 		AssetDefinition AssetDefinition
 		Arguments       [][]byte
-		Anchored        Hash
+		AnchoredID      Hash
 	}
 
 	// Anchor is a pointer to the manifested entry corresponding to
-	// body.Anchor.
+	// body.AnchorID.
 	Anchor Entry // *nonce, *spend, or *issuance
 
 	// Anchored is a pointer to the manifested entry corresponding to
-	// witness.Anchored.
+	// witness.AnchoredID.
 	Anchored Entry
 }
 
@@ -41,7 +41,7 @@ func (iss *Issuance) Body() interface{} { return iss.body }
 func (iss Issuance) Ordinal() int { return iss.ordinal }
 
 func (iss *Issuance) AnchorID() Hash {
-	return iss.body.Anchor
+	return iss.body.AnchorID
 }
 
 func (iss *Issuance) Data() Hash {
@@ -99,7 +99,7 @@ func (iss *Issuance) SetArguments(args [][]byte) {
 // NewIssuance creates a new Issuance.
 func NewIssuance(anchor Entry, value AssetAmount, data Hash, ordinal int) *Issuance {
 	iss := new(Issuance)
-	iss.body.Anchor = EntryID(anchor)
+	iss.body.AnchorID = EntryID(anchor)
 	iss.Anchor = anchor
 	iss.body.Value = value
 	iss.body.Data = data
@@ -127,13 +127,13 @@ func (iss *Issuance) CheckValid(ctx context.Context) error {
 	var anchored Hash
 	switch a := iss.Anchor.(type) {
 	case *Nonce:
-		anchored = a.witness.Anchored
+		anchored = a.witness.AnchoredID
 
 	case *Spend:
-		anchored = a.witness.Anchored
+		anchored = a.witness.AnchoredID
 
 	case *Issuance:
-		anchored = a.witness.Anchored
+		anchored = a.witness.AnchoredID
 
 	default:
 		return errors.WithDetailf(errEntryType, "issuance anchor has type %T, should be nonce, spend, or issuance", iss.Anchor)
@@ -144,7 +144,7 @@ func (iss *Issuance) CheckValid(ctx context.Context) error {
 		return errors.WithDetailf(errMismatchedReference, "issuance %x anchor is for %x", currentEntryID[:], anchored[:])
 	}
 
-	anchorCtx := context.WithValue(ctx, vcCurrentEntryID, iss.body.Anchor)
+	anchorCtx := context.WithValue(ctx, vcCurrentEntryID, iss.body.AnchorID)
 	err = iss.Anchor.CheckValid(anchorCtx)
 	if err != nil {
 		return errors.Wrap(err, "checking issuance anchor")
