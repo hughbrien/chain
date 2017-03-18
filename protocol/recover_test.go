@@ -7,12 +7,11 @@ import (
 	"time"
 
 	"chain/protocol/bc"
-	"chain/protocol/memstore"
 	"chain/testutil"
 )
 
 func TestRecoverSnapshotNoAdditionalBlocks(t *testing.T) {
-	store := memstore.New()
+	store := NewMemStore()
 	b, err := NewInitialBlock(nil, 0, time.Now())
 	if err != nil {
 		testutil.FatalErr(t, err)
@@ -21,7 +20,7 @@ func TestRecoverSnapshotNoAdditionalBlocks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = c1.CommitBlock(context.Background(), b, NewSnapshot())
+	err = c1.CommitAppliedBlock(context.Background(), b, NewSnapshot())
 	if err != nil {
 		testutil.FatalErr(t, err)
 	}
@@ -47,7 +46,7 @@ func TestRecoverSnapshotNoAdditionalBlocks(t *testing.T) {
 		t.Fatalf("block.Height = %d, want %d", block.Height, 1)
 	}
 
-	err = c2.ValidateBlockForSig(context.Background(), createEmptyBlock(block, snapshot))
+	err = c2.ValidateBlockForSig(createEmptyBlock(block, snapshot), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

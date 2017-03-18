@@ -2,27 +2,28 @@
 // keeps all blockchain state in memory.
 //
 // It is used in tests to avoid needing a database.
-package memstore
+//
+// TODO(bobg): place this in a test-utils package, not in protocol
+package protocol
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
-	"chain/protocol"
 	"chain/protocol/bc"
 )
 
-// MemStore satisfies the protocol.Store interface.
+// MemStore satisfies the Store interface.
 type MemStore struct {
 	mu          sync.Mutex
 	Blocks      map[uint64]*bc.Block
-	State       *protocol.Snapshot
+	State       *Snapshot
 	StateHeight uint64
 }
 
 // New returns a new MemStore
-func New() *MemStore {
+func NewMemStore() *MemStore {
 	return &MemStore{Blocks: make(map[uint64]*bc.Block)}
 }
 
@@ -45,7 +46,7 @@ func (m *MemStore) SaveBlock(ctx context.Context, b *bc.Block) error {
 	return nil
 }
 
-func (m *MemStore) SaveSnapshot(ctx context.Context, height uint64, snapshot *protocol.Snapshot) error {
+func (m *MemStore) SaveSnapshot(ctx context.Context, height uint64, snapshot *Snapshot) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -64,12 +65,12 @@ func (m *MemStore) GetBlock(ctx context.Context, height uint64) (*bc.Block, erro
 	return b, nil
 }
 
-func (m *MemStore) LatestSnapshot(context.Context) (*protocol.Snapshot, uint64, error) {
+func (m *MemStore) LatestSnapshot(context.Context) (*Snapshot, uint64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.State == nil {
-		m.State = protocol.NewSnapshot()
+		m.State = NewSnapshot()
 	}
 	return m.State.Copy(), m.StateHeight, nil
 }

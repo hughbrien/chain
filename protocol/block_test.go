@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"chain/protocol/bc"
-	"chain/protocol/memstore"
 	"chain/testutil"
 )
 
@@ -15,8 +14,8 @@ func TestGetBlock(t *testing.T) {
 	ctx := context.Background()
 
 	b1 := &bc.Block{BlockHeader: bc.BlockHeader{Height: 1}}
-	noBlocks := memstore.New()
-	oneBlock := memstore.New()
+	noBlocks := NewMemStore()
+	oneBlock := NewMemStore()
 	oneBlock.SaveBlock(ctx, b1)
 	oneBlock.SaveSnapshot(ctx, 1, NewSnapshot())
 
@@ -46,7 +45,7 @@ func TestGetBlock(t *testing.T) {
 
 func TestNoTimeTravel(t *testing.T) {
 	ctx := context.Background()
-	c, err := NewChain(ctx, bc.Hash{}, memstore.New(), nil)
+	c, err := NewChain(ctx, bc.Hash{}, NewMemStore(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,12 +198,12 @@ func TestValidateBlockForSig(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	c, err := NewChain(ctx, initialBlock.Hash(), memstore.New(), nil)
+	c, err := NewChain(ctx, initialBlock.Hash(), NewMemStore(), nil)
 	if err != nil {
 		t.Fatal("unexpected error ", err)
 	}
 
-	err = c.ValidateBlockForSig(ctx, initialBlock)
+	err = c.ValidateBlockForSig(initialBlock, nil)
 	if err != nil {
 		t.Error("unexpected error ", err)
 	}
@@ -222,13 +221,13 @@ func newTestChain(tb testing.TB, ts time.Time) (c *Chain, b1 *bc.Block) {
 	if err != nil {
 		testutil.FatalErr(tb, err)
 	}
-	c, err = NewChain(ctx, b1.Hash(), memstore.New(), nil)
+	c, err = NewChain(ctx, b1.Hash(), NewMemStore(), nil)
 	if err != nil {
 		testutil.FatalErr(tb, err)
 	}
 	// TODO(tessr): consider adding MaxIssuanceWindow to NewChain
 	c.MaxIssuanceWindow = 48 * time.Hour
-	err = c.CommitBlock(ctx, b1, NewSnapshot())
+	err = c.CommitAppliedBlock(ctx, b1, NewSnapshot())
 	if err != nil {
 		testutil.FatalErr(tb, err)
 	}
@@ -253,7 +252,7 @@ func makeEmptyBlock(tb testing.TB, c *Chain) {
 	if err != nil {
 		testutil.FatalErr(tb, err)
 	}
-	err = c.CommitBlock(ctx, nextBlock, nextState)
+	err = c.CommitAppliedBlock(ctx, nextBlock, nextState)
 	if err != nil {
 		testutil.FatalErr(tb, err)
 	}

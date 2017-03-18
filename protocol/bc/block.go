@@ -60,7 +60,7 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) err
 		}
 
 		if runProg {
-			vmContext := newBlockVMContext(b, prev.Body.NextConsensusProgram, b.Witness.Arguments)
+			vmContext := NewBlockVMContext(b, prev.Body.NextConsensusProgram, b.Witness.Arguments)
 			err := vm.Verify(vmContext)
 			if err != nil {
 				return errors.Wrap(err, "evaluating previous block's next consensus program")

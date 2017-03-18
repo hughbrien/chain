@@ -21,12 +21,12 @@ func TestNextProgram(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	vm := &virtualMachine{
-		runLimit: 50000,
-		block:    block,
-		program:  prog,
+	vm := &VirtualMachine{
+		RunLimit:  50000,
+		Program:   prog,
+		VMContext: bc.NewBlockVMContext(block, prog, nil),
 	}
-	err = vm.run()
+	_, err = vm.Run()
 	if err != nil {
 		t.Errorf("got error %s, expected none", err)
 	}
@@ -35,13 +35,13 @@ func TestNextProgram(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	vm = &virtualMachine{
-		runLimit: 50000,
-		block:    block,
-		program:  prog,
+	vm = &VirtualMachine{
+		RunLimit:  50000,
+		Program:   prog,
+		VMContext: bc.NewBlockVMContext(block, prog, nil),
 	}
-	err = vm.run()
-	if err == nil && vm.falseResult() {
+	_, err = vm.Run()
+	if err == nil && vm.FalseResult() {
 		err = ErrFalseVMResult
 	}
 	switch err {
@@ -64,12 +64,12 @@ func TestBlockTime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	vm := &virtualMachine{
-		runLimit: 50000,
-		block:    block,
-		program:  prog,
+	vm := &VirtualMachine{
+		RunLimit:  50000,
+		Program:   prog,
+		VMContext: bc.NewBlockVMContext(block, prog, nil),
 	}
-	err = vm.run()
+	_, err = vm.Run()
 	if err != nil {
 		t.Errorf("got error %s, expected none", err)
 	}
@@ -78,13 +78,13 @@ func TestBlockTime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	vm = &virtualMachine{
-		runLimit: 50000,
-		block:    block,
-		program:  prog,
+	vm = &VirtualMachine{
+		RunLimit:  50000,
+		Program:   prog,
+		VMContext: bc.NewBlockVMContext(block, prog, nil),
 	}
-	err = vm.run()
-	if err == nil && vm.falseResult() {
+	_, err = vm.Run()
+	if err == nil && vm.FalseResult() {
 		err = ErrFalseVMResult
 	}
 	switch err {
@@ -114,50 +114,51 @@ func TestOutputIDAndNonceOp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	vm := &virtualMachine{
-		runLimit:   50000,
-		tx:         tx.TxEntries,
-		inputIndex: 0,
-		program:    []byte{uint8(OP_OUTPUTID)},
+	prog := []byte{uint8(OP_OUTPUTID)}
+	vm := &VirtualMachine{
+		RunLimit:  50000,
+		Program:   prog,
+		VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1, Code: prog}, nil),
 	}
-	err = vm.step()
+	gotVM, err := vm.Step()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	expectedStack := [][]byte{outputID[:]}
-	if !testutil.DeepEqual(vm.dataStack, expectedStack) {
-		t.Errorf("expected stack %v, got %v", expectedStack, vm.dataStack)
+	if !testutil.DeepEqual(gotVM.DataStack, expectedStack) {
+		t.Errorf("expected stack %v, got %v", expectedStack, gotVM.DataStack)
 	}
 
-	vm = &virtualMachine{
-		runLimit:   50000,
-		tx:         tx.TxEntries,
-		inputIndex: 1,
-		program:    []byte{uint8(OP_OUTPUTID)},
+	prog = []byte{uint8(OP_OUTPUTID)}
+	vm = &VirtualMachine{
+		RunLimit:  50000,
+		Program:   prog,
+		VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[1], bc.Program{VMVersion: 1, Code: prog}, nil),
 	}
-	err = vm.step()
+	_, err = vm.Step()
 	if err != ErrContext {
 		t.Errorf("expected ErrContext, got %v", err)
 	}
 
-	vm = &virtualMachine{
-		runLimit:   50000,
-		tx:         tx.TxEntries,
-		inputIndex: 0,
-		program:    []byte{uint8(OP_NONCE)},
+	prog = []byte{uint8(OP_NONCE)}
+	vm = &VirtualMachine{
+		RunLimit:  50000,
+		Program:   prog,
+		VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1, Code: prog}, nil),
 	}
-	err = vm.step()
+	_, err = vm.Step()
 	if err != ErrContext {
 		t.Errorf("expected ErrContext, got %v", err)
 	}
-	vm = &virtualMachine{
-		runLimit:   50000,
-		tx:         tx.TxEntries,
-		inputIndex: 1,
-		program:    []byte{uint8(OP_NONCE)},
+
+	prog = []byte{uint8(OP_NONCE)}
+	vm = &VirtualMachine{
+		RunLimit:  50000,
+		Program:   prog,
+		VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[1], bc.Program{VMVersion: 1, Code: prog}, nil),
 	}
-	err = vm.step()
+	gotVM, err = vm.Step()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,13 +172,13 @@ func TestOutputIDAndNonceOp(t *testing.T) {
 		VMVersion: 1,
 		Code:      expectedNonceProgCode,
 	}
-	expectedNonceTimeRange := bc.NewTimeRange(tx.MinTimeMS(), tx.MaxTimeMS())
+	expectedNonceTimeRange := bc.NewTimeRange(tx.Body.MinTimeMS, tx.Body.MaxTimeMS)
 	expectedNonce := bc.NewNonce(expectedNonceProg, expectedNonceTimeRange)
 	expectedNonceID := bc.EntryID(expectedNonce)
 
 	expectedStack = [][]byte{expectedNonceID[:]}
-	if !testutil.DeepEqual(vm.dataStack, expectedStack) {
-		t.Errorf("expected stack %v, got %v", expectedStack, vm.dataStack)
+	if !testutil.DeepEqual(gotVM.DataStack, expectedStack) {
+		t.Errorf("expected stack %v, got %v", expectedStack, gotVM.DataStack)
 	}
 }
 
@@ -201,15 +202,14 @@ func TestIntrospectionOps(t *testing.T) {
 
 	type testStruct struct {
 		op      Op
-		startVM *virtualMachine
+		startVM *VirtualMachine
 		wantErr error
-		wantVM  *virtualMachine
+		wantVM  *VirtualMachine
 	}
 	cases := []testStruct{{
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				{4},
 				mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
 				{7},
@@ -217,18 +217,18 @@ func TestIntrospectionOps(t *testing.T) {
 				{1},
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     50101,
-			deferredCost: -117,
-			tx:           tx.TxEntries,
-			dataStack:    [][]byte{{1}},
+		wantVM: &VirtualMachine{
+			RunLimit:     50101,
+			DeferredCost: -117,
+			DataStack:    [][]byte{{1}},
+			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				{3},
 				mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
 				{7},
@@ -236,18 +236,18 @@ func TestIntrospectionOps(t *testing.T) {
 				{1},
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     50102,
-			deferredCost: -118,
-			tx:           tx.TxEntries,
-			dataStack:    [][]byte{{}},
+		wantVM: &VirtualMachine{
+			RunLimit:     50102,
+			DeferredCost: -118,
+			DataStack:    [][]byte{{}},
+			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				{0},
 				[]byte{},
 				{1},
@@ -255,17 +255,18 @@ func TestIntrospectionOps(t *testing.T) {
 				{1},
 				[]byte("missingprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     50070,
-			deferredCost: -86,
-			tx:           tx.TxEntries,
-			dataStack:    [][]byte{{}},
+		wantVM: &VirtualMachine{
+			RunLimit:     50070,
+			DeferredCost: -86,
+			DataStack:    [][]byte{{}},
+			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				{0},
 				mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
 				{7},
@@ -277,60 +278,59 @@ func TestIntrospectionOps(t *testing.T) {
 		wantErr: ErrContext,
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
+		startVM: &VirtualMachine{
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 		wantErr: ErrDataStackUnderflow,
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 		wantErr: ErrDataStackUnderflow,
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				append([]byte{2}, make([]byte, 31)...),
 				{1},
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 		wantErr: ErrDataStackUnderflow,
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				{7},
 				append([]byte{2}, make([]byte, 31)...),
 				{1},
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 		wantErr: ErrDataStackUnderflow,
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
 				{7},
 				append([]byte{2}, make([]byte, 31)...),
 				{1},
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 		wantErr: ErrDataStackUnderflow,
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				{4},
 				mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
 				{7},
@@ -338,13 +338,13 @@ func TestIntrospectionOps(t *testing.T) {
 				Int64Bytes(-1),
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 		wantErr: ErrBadValue,
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				{4},
 				mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
 				Int64Bytes(-1),
@@ -352,13 +352,13 @@ func TestIntrospectionOps(t *testing.T) {
 				{1},
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 		wantErr: ErrBadValue,
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				Int64Bytes(-1),
 				mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
 				{7},
@@ -366,13 +366,13 @@ func TestIntrospectionOps(t *testing.T) {
 				{1},
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 		wantErr: ErrBadValue,
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			DataStack: [][]byte{
 				{5},
 				mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
 				{7},
@@ -380,14 +380,14 @@ func TestIntrospectionOps(t *testing.T) {
 				{1},
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 		wantErr: ErrBadValue,
 	}, {
 		op: OP_CHECKOUTPUT,
-		startVM: &virtualMachine{
-			runLimit: 0,
-			tx:       tx.TxEntries,
-			dataStack: [][]byte{
+		startVM: &VirtualMachine{
+			RunLimit: 0,
+			DataStack: [][]byte{
 				{4},
 				mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
 				{7},
@@ -395,117 +395,116 @@ func TestIntrospectionOps(t *testing.T) {
 				{1},
 				[]byte("controlprog"),
 			},
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 		wantErr: ErrRunLimitExceeded,
 	}, {
 		op: OP_ASSET,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
+		startVM: &VirtualMachine{
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     49959,
-			deferredCost: 40,
-			dataStack:    [][]byte{append([]byte{1}, make([]byte, 31)...)},
-			tx:           tx.TxEntries,
+		wantVM: &VirtualMachine{
+			RunLimit:     49959,
+			DeferredCost: 40,
+			DataStack:    [][]byte{append([]byte{1}, make([]byte, 31)...)},
+			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
 		op: OP_AMOUNT,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
+		startVM: &VirtualMachine{
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     49990,
-			deferredCost: 9,
-			dataStack:    [][]byte{{5}},
-			tx:           tx.TxEntries,
-		},
-	}, {
-		op: OP_PROGRAM,
-		startVM: &virtualMachine{
-			mainprog: []byte("spendprog"),
-			tx:       tx.TxEntries,
-		},
-		wantVM: &virtualMachine{
-			runLimit:     49982,
-			deferredCost: 17,
-			dataStack:    [][]byte{[]byte("spendprog")},
-			tx:           tx.TxEntries,
+		wantVM: &VirtualMachine{
+			RunLimit:     49990,
+			DeferredCost: 9,
+			DataStack:    [][]byte{{5}},
+			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
 		op: OP_PROGRAM,
-		startVM: &virtualMachine{
-			mainprog:   []byte("issueprog"),
-			runLimit:   50000,
-			tx:         tx.TxEntries,
-			inputIndex: 1,
+		startVM: &VirtualMachine{
+			Program:   []byte("spendprog"),
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1, Code: []byte("spendprog")}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     49982,
-			deferredCost: 17,
-			dataStack:    [][]byte{[]byte("issueprog")},
-			tx:           tx.TxEntries,
-			inputIndex:   1,
+		wantVM: &VirtualMachine{
+			RunLimit:     49982,
+			DeferredCost: 17,
+			DataStack:    [][]byte{[]byte("spendprog")},
+			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1, Code: []byte("spendprog")}, nil),
+		},
+	}, {
+		op: OP_PROGRAM,
+		startVM: &VirtualMachine{
+			Program:   []byte("issueprog"),
+			RunLimit:  50000,
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[1], bc.Program{VMVersion: 1, Code: []byte("issueprog")}, nil),
+		},
+		wantVM: &VirtualMachine{
+			RunLimit:     49982,
+			DeferredCost: 17,
+			DataStack:    [][]byte{[]byte("issueprog")},
+			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[1], bc.Program{VMVersion: 1, Code: []byte("issueprog")}, nil),
 		},
 	}, {
 		op: OP_MINTIME,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
+		startVM: &VirtualMachine{
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     49991,
-			deferredCost: 8,
-			tx:           tx.TxEntries,
-			dataStack:    [][]byte{[]byte{}},
+		wantVM: &VirtualMachine{
+			RunLimit:     49991,
+			DeferredCost: 8,
+			DataStack:    [][]byte{[]byte{}},
+			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
 		op: OP_MAXTIME,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
+		startVM: &VirtualMachine{
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     49990,
-			deferredCost: 9,
-			dataStack:    [][]byte{{20}},
-			tx:           tx.TxEntries,
+		wantVM: &VirtualMachine{
+			RunLimit:     49990,
+			DeferredCost: 9,
+			DataStack:    [][]byte{{20}},
+			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
 		op: OP_TXREFDATAHASH,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
+		startVM: &VirtualMachine{
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     49959,
-			deferredCost: 40,
-			dataStack: [][]byte{{
+		wantVM: &VirtualMachine{
+			RunLimit:     49959,
+			DeferredCost: 40,
+			DataStack: [][]byte{{
 				62, 81, 144, 242, 105, 30, 109, 69, 28, 80, 237, 249, 169, 166, 106, 122,
 				103, 121, 199, 135, 103, 100, 82, 129, 13, 191, 79, 110, 64, 83, 104, 44,
 			}},
-			tx: tx.TxEntries,
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
 		op: OP_REFDATAHASH,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
+		startVM: &VirtualMachine{
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     49959,
-			deferredCost: 40,
-			dataStack: [][]byte{{
+		wantVM: &VirtualMachine{
+			RunLimit:     49959,
+			DeferredCost: 40,
+			DataStack: [][]byte{{
 				68, 190, 94, 20, 206, 33, 111, 75, 44, 53, 165, 235, 11, 53, 208, 120,
 				189, 165, 92, 240, 91, 93, 54, 238, 14, 122, 1, 251, 198, 239, 98, 183,
 			}},
-			tx: tx.TxEntries,
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
 		op: OP_INDEX,
-		startVM: &virtualMachine{
-			tx: tx.TxEntries,
+		startVM: &VirtualMachine{
+			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-		wantVM: &virtualMachine{
-			runLimit:     49991,
-			deferredCost: 8,
-			tx:           tx.TxEntries,
-			dataStack:    [][]byte{[]byte{}},
+		wantVM: &VirtualMachine{
+			RunLimit:     49991,
+			DeferredCost: 8,
+			DataStack:    [][]byte{[]byte{}},
+			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}}
 
@@ -518,16 +517,14 @@ func TestIntrospectionOps(t *testing.T) {
 	for _, op := range txops {
 		cases = append(cases, testStruct{
 			op: op,
-			startVM: &virtualMachine{
-				runLimit: 0,
-				tx:       tx.TxEntries,
+			startVM: &VirtualMachine{
+				RunLimit:  0,
+				VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 			},
 			wantErr: ErrRunLimitExceeded,
 		}, testStruct{
-			op: op,
-			startVM: &virtualMachine{
-				tx: nil,
-			},
+			op:      op,
+			startVM: &VirtualMachine{},
 			wantErr: ErrContext,
 		})
 	}
@@ -536,30 +533,26 @@ func TestIntrospectionOps(t *testing.T) {
 		prog := []byte{byte(c.op)}
 		vm := c.startVM
 		if c.wantErr != ErrRunLimitExceeded {
-			vm.runLimit = 50000
+			vm.RunLimit = 50000
 		}
-		if vm.mainprog == nil {
-			vm.mainprog = prog
-		}
-		vm.program = prog
-		err := vm.run()
+		vm.Program = prog
+		gotVM, err := vm.Run()
 		switch err {
 		case c.wantErr:
 			// ok
 		case nil:
-			t.Errorf("case %d, op %s: got no error, want %v", i, ops[c.op].name, c.wantErr)
+			t.Errorf("case %d, op %s: got no error, want %v", i, OpName(c.op), c.wantErr)
 		default:
-			t.Errorf("case %d, op %s: got err = %v want %v", i, ops[c.op].name, err, c.wantErr)
+			t.Errorf("case %d, op %s: got err = %v want %v", i, OpName(c.op), err, c.wantErr)
 		}
 		if c.wantErr != nil {
 			continue
 		}
-		c.wantVM.mainprog = vm.mainprog
-		c.wantVM.program = prog
-		c.wantVM.pc = 1
-		c.wantVM.nextPC = 1
-		if !testutil.DeepEqual(vm, c.wantVM) {
-			t.Errorf("case %d, op %s: unexpected vm result\n\tgot:  %+v\n\twant: %+v\n", i, ops[c.op].name, c.startVM, c.wantVM)
+		c.wantVM.Program = prog
+		c.wantVM.PC = 1
+		c.wantVM.NextPC = 1
+		if !testutil.DeepEqual(gotVM, c.wantVM) {
+			t.Errorf("case %d, op %s: unexpected vm result\n\tgot:  %+v\n\twant: %+v\n", i, OpName(c.op), gotVM, c.wantVM)
 		}
 	}
 }

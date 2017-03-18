@@ -2,7 +2,6 @@ package prottest
 
 import (
 	"testing"
-	"time"
 
 	"chain/protocol/bc"
 )
@@ -10,7 +9,7 @@ import (
 func TestNewIssuance(t *testing.T) {
 	c := NewChain(t)
 	iss := NewIssuanceTx(t, c)
-	err := bc.ValidateTx(iss.TxEntries, 1, c.InitialBlockHash, bc.Millis(time.Now()))
+	err := bc.ValidateTx(iss.TxEntries, c.InitialBlockHash)
 	if err != nil {
 		t.Error(err)
 	}

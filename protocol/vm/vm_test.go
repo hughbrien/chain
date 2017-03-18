@@ -153,13 +153,13 @@ func doOKNotOK(t *testing.T, expectOK bool) {
 		fmt.Printf("* case %d, prog [%s] [%x]\n", i, progSrc, prog)
 		trace := new(tracebuf)
 		TraceOut = trace
-		vm := &virtualMachine{
-			program:   prog,
-			runLimit:  initialRunLimit,
-			dataStack: append([][]byte{}, c.args...),
+		vm := &VirtualMachine{
+			Program:   prog,
+			RunLimit:  int64(InitialRunLimit),
+			DataStack: append([][]byte{}, c.args...),
 		}
-		err = vm.run()
-		if err == nil && vm.falseResult() {
+		gotVM, err := vm.Run()
+		if err == nil && gotVM.FalseResult() {
 			err = ErrFalseVMResult
 		}
 		if expectOK && err != nil {
@@ -234,7 +234,20 @@ func TestVerifyTxInput(t *testing.T) {
 			Inputs: []*bc.TxInput{c.input},
 		})
 
-		gotErr := VerifyTxInput(tx.TxEntries, 0)
+		inp := tx.TxEntries.TxInputs[0]
+		var (
+			prog bc.Program
+			args [][]byte
+		)
+		switch inp := inp.(type) {
+		case *bc.Issuance:
+			prog = inp.Witness.AssetDefinition.IssuanceProgram
+			args = inp.Witness.Arguments
+		case *bc.Spend:
+			prog = inp.SpentOutput.Body.ControlProgram
+			args = inp.Witness.Arguments
+		}
+		gotErr := Verify(bc.NewTxVMContext(tx.TxEntries, inp, prog, args))
 
 		if errors.Root(gotErr) != c.wantErr {
 			t.Errorf("VerifyTxInput(%d) err = %v want %v", i, gotErr, c.wantErr)
@@ -250,15 +263,9 @@ func TestVerifyBlockHeader(t *testing.T) {
 			},
 		},
 	})
-	prevBlock := bc.MapBlock(&bc.Block{
-		BlockHeader: bc.BlockHeader{
-			BlockCommitment: bc.BlockCommitment{
-				ConsensusProgram: []byte{byte(OP_ADD), byte(OP_5), byte(OP_NUMEQUAL)},
-			},
-		},
-	})
+	consensusProg := []byte{byte(OP_ADD), byte(OP_5), byte(OP_NUMEQUAL)}
 
-	gotErr := VerifyBlockHeader(prevBlock.BlockHeaderEntry, block)
+	gotErr := Verify(bc.NewBlockVMContext(block, consensusProg, block.Witness.Arguments))
 	if gotErr != nil {
 		t.Errorf("unexpected error: %v", gotErr)
 	}
@@ -271,7 +278,7 @@ func TestVerifyBlockHeader(t *testing.T) {
 		},
 	})
 
-	gotErr = VerifyBlockHeader(prevBlock.BlockHeaderEntry, block)
+	gotErr = Verify(bc.NewBlockVMContext(block, consensusProg, block.Witness.Arguments))
 	if errors.Root(gotErr) != ErrRunLimitExceeded {
 		t.Error("expected block to exceed run limit")
 	}
@@ -279,17 +286,17 @@ func TestVerifyBlockHeader(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	cases := []struct {
-		vm      *virtualMachine
+		vm      *VirtualMachine
 		wantErr error
 	}{{
-		vm: &virtualMachine{runLimit: 50000, program: []byte{byte(OP_TRUE)}},
+		vm: &VirtualMachine{RunLimit: 50000, Program: []byte{byte(OP_TRUE)}},
 	}, {
-		vm:      &virtualMachine{runLimit: 50000, program: []byte{byte(OP_ADD)}},
+		vm:      &VirtualMachine{RunLimit: 50000, Program: []byte{byte(OP_ADD)}},
 		wantErr: ErrDataStackUnderflow,
 	}}
 
 	for i, c := range cases {
-		gotErr := c.vm.run()
+		_, gotErr := c.vm.Run()
 
 		if gotErr != c.wantErr {
 			t.Errorf("run test %d: got err = %v want %v", i, gotErr, c.wantErr)
@@ -304,118 +311,118 @@ func TestRun(t *testing.T) {
 
 func TestStep(t *testing.T) {
 	cases := []struct {
-		startVM *virtualMachine
-		wantVM  *virtualMachine
+		startVM *VirtualMachine
+		wantVM  *VirtualMachine
 		wantErr error
 	}{{
-		startVM: &virtualMachine{
-			program:  []byte{byte(OP_TRUE)},
-			runLimit: 50000,
+		startVM: &VirtualMachine{
+			Program:  []byte{byte(OP_TRUE)},
+			RunLimit: 50000,
 		},
-		wantVM: &virtualMachine{
-			program:   []byte{byte(OP_TRUE)},
-			runLimit:  49990,
-			dataStack: [][]byte{{1}},
-			pc:        1,
-			nextPC:    1,
-			data:      []byte{1},
-		},
-	}, {
-		startVM: &virtualMachine{
-			program:   []byte{byte(OP_TRUE), byte(OP_JUMP), byte(0xff), byte(0x00), byte(0x00), byte(0x00)},
-			runLimit:  49990,
-			dataStack: [][]byte{},
-			pc:        1,
-		},
-		wantVM: &virtualMachine{
-			program:      []byte{byte(OP_TRUE), byte(OP_JUMP), byte(0xff), byte(0x00), byte(0x00), byte(0x00)},
-			runLimit:     49989,
-			dataStack:    [][]byte{},
-			data:         []byte{byte(0xff), byte(0x00), byte(0x00), byte(0x00)},
-			pc:           255,
-			nextPC:       255,
-			deferredCost: 0,
+		wantVM: &VirtualMachine{
+			Program:   []byte{byte(OP_TRUE)},
+			RunLimit:  49990,
+			DataStack: [][]byte{{1}},
+			PC:        1,
+			NextPC:    1,
+			Data:      []byte{1},
 		},
 	}, {
-		startVM: &virtualMachine{
-			program:   []byte{byte(OP_TRUE), byte(OP_JUMPIF), byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
-			runLimit:  49995,
-			dataStack: [][]byte{{1}},
-			pc:        1,
+		startVM: &VirtualMachine{
+			Program:   []byte{byte(OP_TRUE), byte(OP_JUMP), byte(0xff), byte(0x00), byte(0x00), byte(0x00)},
+			RunLimit:  49990,
+			DataStack: [][]byte{},
+			PC:        1,
 		},
-		wantVM: &virtualMachine{
-			program:      []byte{byte(OP_TRUE), byte(OP_JUMPIF), byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
-			runLimit:     50003,
-			dataStack:    [][]byte{},
-			pc:           0,
-			nextPC:       0,
-			data:         []byte{byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
-			deferredCost: -9,
-		},
-	}, {
-		startVM: &virtualMachine{
-			program:   []byte{byte(OP_FALSE), byte(OP_JUMPIF), byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
-			runLimit:  49995,
-			dataStack: [][]byte{{}},
-			pc:        1,
-		},
-		wantVM: &virtualMachine{
-			program:      []byte{byte(OP_FALSE), byte(OP_JUMPIF), byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
-			runLimit:     50002,
-			dataStack:    [][]byte{},
-			pc:           6,
-			nextPC:       6,
-			data:         []byte{byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
-			deferredCost: -8,
+		wantVM: &VirtualMachine{
+			Program:      []byte{byte(OP_TRUE), byte(OP_JUMP), byte(0xff), byte(0x00), byte(0x00), byte(0x00)},
+			RunLimit:     49989,
+			DataStack:    [][]byte{},
+			Data:         []byte{byte(0xff), byte(0x00), byte(0x00), byte(0x00)},
+			PC:           255,
+			NextPC:       255,
+			DeferredCost: 0,
 		},
 	}, {
-		startVM: &virtualMachine{
-			program:   []byte{255},
-			runLimit:  50000,
-			dataStack: [][]byte{},
+		startVM: &VirtualMachine{
+			Program:   []byte{byte(OP_TRUE), byte(OP_JUMPIF), byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
+			RunLimit:  49995,
+			DataStack: [][]byte{{1}},
+			PC:        1,
 		},
-		wantVM: &virtualMachine{
-			program:   []byte{255},
-			runLimit:  49999,
-			pc:        1,
-			nextPC:    1,
-			dataStack: [][]byte{},
+		wantVM: &VirtualMachine{
+			Program:      []byte{byte(OP_TRUE), byte(OP_JUMPIF), byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
+			RunLimit:     50003,
+			DataStack:    [][]byte{},
+			PC:           0,
+			NextPC:       0,
+			Data:         []byte{byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
+			DeferredCost: -9,
 		},
 	}, {
-		startVM: &virtualMachine{
-			program:  []byte{byte(OP_ADD)},
-			runLimit: 50000,
+		startVM: &VirtualMachine{
+			Program:   []byte{byte(OP_FALSE), byte(OP_JUMPIF), byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
+			RunLimit:  49995,
+			DataStack: [][]byte{{}},
+			PC:        1,
+		},
+		wantVM: &VirtualMachine{
+			Program:      []byte{byte(OP_FALSE), byte(OP_JUMPIF), byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
+			RunLimit:     50002,
+			DataStack:    [][]byte{},
+			PC:           6,
+			NextPC:       6,
+			Data:         []byte{byte(0x00), byte(0x00), byte(0x00), byte(0x00)},
+			DeferredCost: -8,
+		},
+	}, {
+		startVM: &VirtualMachine{
+			Program:   []byte{255},
+			RunLimit:  50000,
+			DataStack: [][]byte{},
+		},
+		wantVM: &VirtualMachine{
+			Program:   []byte{255},
+			RunLimit:  49999,
+			PC:        1,
+			NextPC:    1,
+			DataStack: [][]byte{},
+		},
+	}, {
+		startVM: &VirtualMachine{
+			Program:  []byte{byte(OP_ADD)},
+			RunLimit: 50000,
 		},
 		wantErr: ErrDataStackUnderflow,
 	}, {
-		startVM: &virtualMachine{
-			program:  []byte{byte(OP_INDEX)},
-			runLimit: 1,
-			tx:       bc.NewTx(bc.TxData{}).TxEntries,
+		startVM: &VirtualMachine{
+			Program:   []byte{byte(OP_INDEX)},
+			RunLimit:  1,
+			VMContext: bc.NewTxVMContext(bc.NewTx(bc.TxData{}).TxEntries, nil, bc.Program{}, nil),
 		},
 		wantErr: ErrRunLimitExceeded,
 	}, {
-		startVM: &virtualMachine{
-			program:           []byte{255},
-			runLimit:          100,
-			expansionReserved: true,
+		startVM: &VirtualMachine{
+			Program:           []byte{255},
+			RunLimit:          100,
+			ExpansionReserved: true,
 		},
 		wantErr: ErrDisallowedOpcode,
 	}, {
-		startVM: &virtualMachine{
-			program:  []byte{255},
-			runLimit: 100,
+		startVM: &VirtualMachine{
+			Program:  []byte{255},
+			RunLimit: 100,
 		},
-		wantVM: &virtualMachine{
-			program:  []byte{255},
-			runLimit: 99,
-			pc:       1,
-			nextPC:   1,
+		wantVM: &VirtualMachine{
+			Program:  []byte{255},
+			RunLimit: 99,
+			PC:       1,
+			NextPC:   1,
 		},
 	}}
 
 	for i, c := range cases {
-		gotErr := c.startVM.step()
+		gotVM, gotErr := c.startVM.Step()
 
 		if gotErr != c.wantErr {
 			t.Errorf("step test %d: got err = %v want %v", i, gotErr, c.wantErr)
@@ -426,8 +433,8 @@ func TestStep(t *testing.T) {
 			continue
 		}
 
-		if !testutil.DeepEqual(c.startVM, c.wantVM) {
-			t.Errorf("step test %d:\n\tgot vm:  %+v\n\twant vm: %+v", i, c.startVM, c.wantVM)
+		if !testutil.DeepEqual(gotVM, c.wantVM) {
+			t.Errorf("step test %d:\n\tgot vm:  %+v\n\twant vm: %+v", i, gotVM, c.wantVM)
 		}
 	}
 }
@@ -468,7 +475,7 @@ func TestVerifyTxInputQuickCheck(t *testing.T) {
 		tx := bc.NewTx(bc.TxData{
 			Inputs: []*bc.TxInput{bc.NewSpendInput(witnesses, bc.Hash{}, bc.AssetID{}, 10, 0, program, bc.Hash{}, nil)},
 		})
-		verifyTxInput(tx.TxEntries, 0)
+		Verify(bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1, Code: program}, witnesses))
 		return true
 	}
 	if err := quick.Check(f, nil); err != nil {
@@ -488,19 +495,12 @@ func TestVerifyBlockHeaderQuickCheck(t *testing.T) {
 				ok = false
 			}
 		}()
-		prev := bc.MapBlock(&bc.Block{
-			BlockHeader: bc.BlockHeader{
-				BlockCommitment: bc.BlockCommitment{
-					ConsensusProgram: program,
-				},
-			},
-		})
 		block := bc.MapBlock(&bc.Block{BlockHeader: bc.BlockHeader{
 			BlockWitness: bc.BlockWitness{
 				Witness: witnesses,
 			},
 		}})
-		verifyBlockHeader(prev.BlockHeaderEntry, block)
+		Verify(bc.NewBlockVMContext(block, program, witnesses))
 		return true
 	}
 	if err := quick.Check(f, nil); err != nil {

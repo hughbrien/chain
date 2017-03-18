@@ -60,7 +60,7 @@ func (s *Spend) CheckValid(ctx context.Context) error {
 	// xxx SpentOutput "present"
 
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(newTxVMContext(currentTx, s, s.SpentOutput.Body.ControlProgram, s.Witness.Arguments))
+	err := vm.Verify(NewTxVMContext(currentTx, s, s.SpentOutput.Body.ControlProgram, s.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking control program")
 	}

@@ -10,7 +10,6 @@ import (
 	"chain/protocol"
 	"chain/protocol/bc"
 	"chain/protocol/prottest"
-	"chain/protocol/vm"
 	"chain/testutil"
 )
 
@@ -82,8 +81,7 @@ func TestGetAndAddBlockSignatures(t *testing.T) {
 		testutil.FatalErr(t, err)
 	}
 
-	tipEntries := bc.MapBlock(tip)
-	err = vm.VerifyBlockHeader(tipEntries.BlockHeaderEntry, bc.MapBlock(block))
+	err = c.ValidateBlock(block, tip)
 	if err != nil {
 		testutil.FatalErr(t, err)
 	}

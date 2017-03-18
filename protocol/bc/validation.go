@@ -36,42 +36,42 @@ const (
 	vcInitialBlockID            // Hash
 )
 
-type blockVMContext struct {
+type BlockVMContext struct {
 	prog  Program
 	args  [][]byte
 	block *BlockEntries
 }
 
-func (b *blockVMContext) VMVersion() uint64   { return b.prog.VMVersion }
-func (b *blockVMContext) Code() []byte        { return b.prog.Code }
-func (b *blockVMContext) Arguments() [][]byte { return b.args }
+func (b *BlockVMContext) VMVersion() uint64   { return b.prog.VMVersion }
+func (b *BlockVMContext) Code() []byte        { return b.prog.Code }
+func (b *BlockVMContext) Arguments() [][]byte { return b.args }
 
-func (b *blockVMContext) BlockHash() ([]byte, error)   { return b.block.ID[:], nil }
-func (b *blockVMContext) BlockTimeMS() (uint64, error) { return b.block.Body.TimestampMS, nil }
+func (b *BlockVMContext) BlockHash() ([]byte, error)   { return b.block.ID[:], nil }
+func (b *BlockVMContext) BlockTimeMS() (uint64, error) { return b.block.Body.TimestampMS, nil }
 
-func (b *blockVMContext) NextConsensusProgram() ([]byte, error) {
+func (b *BlockVMContext) NextConsensusProgram() ([]byte, error) {
 	return b.block.Body.NextConsensusProgram, nil
 }
 
-func (b *blockVMContext) TxVersion() (uint64, bool)      { return 0, false }
-func (b *blockVMContext) TxSigHash() ([]byte, error)     { return nil, errContext }
-func (b *blockVMContext) NumResults() (uint64, error)    { return 0, errContext }
-func (b *blockVMContext) AssetID() ([]byte, error)       { return nil, errContext }
-func (b *blockVMContext) Amount() (uint64, error)        { return 0, errContext }
-func (b *blockVMContext) MinTimeMS() (uint64, error)     { return 0, errContext }
-func (b *blockVMContext) MaxTimeMS() (uint64, error)     { return 0, errContext }
-func (b *blockVMContext) EntryData() ([]byte, error)     { return nil, errContext } // xxx ?
-func (b *blockVMContext) TxData() ([]byte, error)        { return nil, errContext }
-func (b *blockVMContext) DestPos() (uint64, error)       { return 0, errContext }
-func (b *blockVMContext) AnchorID() ([]byte, error)      { return nil, errContext }
-func (b *blockVMContext) SpentOutputID() ([]byte, error) { return nil, errContext }
+func (b *BlockVMContext) TxVersion() (uint64, bool)      { return 0, false }
+func (b *BlockVMContext) TxSigHash() ([]byte, error)     { return nil, errContext }
+func (b *BlockVMContext) NumResults() (uint64, error)    { return 0, errContext }
+func (b *BlockVMContext) AssetID() ([]byte, error)       { return nil, errContext }
+func (b *BlockVMContext) Amount() (uint64, error)        { return 0, errContext }
+func (b *BlockVMContext) MinTimeMS() (uint64, error)     { return 0, errContext }
+func (b *BlockVMContext) MaxTimeMS() (uint64, error)     { return 0, errContext }
+func (b *BlockVMContext) EntryData() ([]byte, error)     { return nil, errContext } // xxx ?
+func (b *BlockVMContext) TxData() ([]byte, error)        { return nil, errContext }
+func (b *BlockVMContext) DestPos() (uint64, error)       { return 0, errContext }
+func (b *BlockVMContext) AnchorID() ([]byte, error)      { return nil, errContext }
+func (b *BlockVMContext) SpentOutputID() ([]byte, error) { return nil, errContext }
 
-func (b *blockVMContext) CheckOutput(uint64, []byte, uint64, []byte, uint64, []byte) (bool, error) {
+func (b *BlockVMContext) CheckOutput(uint64, []byte, uint64, []byte, uint64, []byte) (bool, error) {
 	return false, errContext
 }
 
-func newBlockVMContext(block *BlockEntries, prog []byte, args [][]byte) *blockVMContext {
-	return &blockVMContext{
+func NewBlockVMContext(block *BlockEntries, prog []byte, args [][]byte) *BlockVMContext {
+	return &BlockVMContext{
 		prog: Program{
 			VMVersion: 1,
 			Code:      prog,
@@ -81,15 +81,15 @@ func newBlockVMContext(block *BlockEntries, prog []byte, args [][]byte) *blockVM
 	}
 }
 
-type txVMContext struct {
+type TxVMContext struct {
 	prog  Program
 	args  [][]byte
 	tx    *TxEntries
 	entry Entry
 }
 
-func newTxVMContext(tx *TxEntries, entry Entry, prog Program, args [][]byte) *txVMContext {
-	return &txVMContext{
+func NewTxVMContext(tx *TxEntries, entry Entry, prog Program, args [][]byte) *TxVMContext {
+	return &TxVMContext{
 		prog:  prog,
 		args:  args,
 		tx:    tx,
@@ -97,18 +97,18 @@ func newTxVMContext(tx *TxEntries, entry Entry, prog Program, args [][]byte) *tx
 	}
 }
 
-func (t *txVMContext) VMVersion() uint64   { return t.prog.VMVersion }
-func (t *txVMContext) Code() []byte        { return t.prog.Code }
-func (t *txVMContext) Arguments() [][]byte { return t.args }
+func (t *TxVMContext) VMVersion() uint64   { return t.prog.VMVersion }
+func (t *TxVMContext) Code() []byte        { return t.prog.Code }
+func (t *TxVMContext) Arguments() [][]byte { return t.args }
 
-func (t *txVMContext) BlockHash() ([]byte, error)   { return nil, errContext }
-func (t *txVMContext) BlockTimeMS() (uint64, error) { return 0, errContext }
+func (t *TxVMContext) BlockHash() ([]byte, error)   { return nil, errContext }
+func (t *TxVMContext) BlockTimeMS() (uint64, error) { return 0, errContext }
 
-func (t *txVMContext) NextConsensusProgram() ([]byte, error) { return nil, errContext }
+func (t *TxVMContext) NextConsensusProgram() ([]byte, error) { return nil, errContext }
 
-func (t *txVMContext) TxVersion() (uint64, bool) { return t.tx.Body.Version, true }
+func (t *TxVMContext) TxVersion() (uint64, bool) { return t.tx.Body.Version, true }
 
-func (t *txVMContext) TxSigHash() ([]byte, error) {
+func (t *TxVMContext) TxSigHash() ([]byte, error) {
 	ord := t.entry.Ordinal()
 	if ord < 0 {
 		return nil, errContext
@@ -117,9 +117,9 @@ func (t *txVMContext) TxSigHash() ([]byte, error) {
 	return h[:], nil
 }
 
-func (t *txVMContext) NumResults() (uint64, error) { return uint64(len(t.tx.Results)), nil }
+func (t *TxVMContext) NumResults() (uint64, error) { return uint64(len(t.tx.Results)), nil }
 
-func (t *txVMContext) AssetID() ([]byte, error) {
+func (t *TxVMContext) AssetID() ([]byte, error) {
 	switch inp := t.entry.(type) {
 	case *Nonce:
 		if iss, ok := inp.Anchored.(*Issuance); ok {
@@ -137,7 +137,7 @@ func (t *txVMContext) AssetID() ([]byte, error) {
 	return nil, errContext
 }
 
-func (t *txVMContext) Amount() (uint64, error) {
+func (t *TxVMContext) Amount() (uint64, error) {
 	switch inp := t.entry.(type) {
 	case *Nonce:
 		if iss, ok := inp.Anchored.(*Issuance); ok {
@@ -155,10 +155,10 @@ func (t *txVMContext) Amount() (uint64, error) {
 	return 0, errContext
 }
 
-func (t *txVMContext) MinTimeMS() (uint64, error) { return t.tx.Body.MinTimeMS, nil }
-func (t *txVMContext) MaxTimeMS() (uint64, error) { return t.tx.Body.MaxTimeMS, nil }
+func (t *TxVMContext) MinTimeMS() (uint64, error) { return t.tx.Body.MinTimeMS, nil }
+func (t *TxVMContext) MaxTimeMS() (uint64, error) { return t.tx.Body.MaxTimeMS, nil }
 
-func (t *txVMContext) EntryData() ([]byte, error) {
+func (t *TxVMContext) EntryData() ([]byte, error) {
 	switch inp := t.entry.(type) {
 	case *Issuance:
 		return inp.Body.Data[:], nil
@@ -176,9 +176,9 @@ func (t *txVMContext) EntryData() ([]byte, error) {
 	return nil, errContext
 }
 
-func (t *txVMContext) TxData() ([]byte, error) { return t.tx.Body.Data[:], nil }
+func (t *TxVMContext) TxData() ([]byte, error) { return t.tx.Body.Data[:], nil }
 
-func (t *txVMContext) DestPos() (uint64, error) {
+func (t *TxVMContext) DestPos() (uint64, error) {
 	switch inp := t.entry.(type) {
 	case *Issuance:
 		return inp.Witness.Destination.Position, nil
@@ -190,20 +190,21 @@ func (t *txVMContext) DestPos() (uint64, error) {
 	return 0, errContext
 }
 
-func (t *txVMContext) AnchorID() ([]byte, error) {
+func (t *TxVMContext) AnchorID() ([]byte, error) {
 	if inp, ok := t.entry.(*Issuance); ok {
 		return inp.Body.AnchorID[:], nil
 	}
 	return nil, errContext
 }
 
-func (t *txVMContext) SpentOutputID() ([]byte, error) {
+func (t *TxVMContext) SpentOutputID() ([]byte, error) {
 	if inp, ok := t.entry.(*Spend); ok {
 		return inp.Body.SpentOutputID[:], nil
 	}
 	return nil, errContext
 }
 
-func (t *txVMContext) CheckOutput(uint64, []byte, uint64, []byte, uint64, []byte) (bool, error) {
+func (t *TxVMContext) CheckOutput(uint64, []byte, uint64, []byte, uint64, []byte) (bool, error) {
+	// xxx
 	return false, errContext
 }

@@ -38,7 +38,7 @@ func NewMux(sources []ValueSource, program Program) *Mux {
 
 func (mux *Mux) CheckValid(ctx context.Context) error {
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(newTxVMContext(currentTx, mux, mux.Body.Program, mux.Witness.Arguments))
+	err := vm.Verify(NewTxVMContext(currentTx, mux, mux.Body.Program, mux.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking mux program")
 	}
