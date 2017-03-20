@@ -138,7 +138,10 @@ func (m *Manager) indexAccountUTXOs(ctx context.Context, b *bc.Block) error {
 	for i, tx := range b.Transactions {
 		blockPositions[tx.ID] = uint32(i)
 		for j, out := range tx.Outputs {
-			resOut := tx.Results[j].(*bc.Output)
+			resOut, ok := tx.Results[j].(*bc.Output)
+			if !ok {
+				continue
+			}
 			out := &rawOutput{
 				OutputID:       tx.OutputID(uint32(j)),
 				AssetAmount:    out.AssetAmount,
