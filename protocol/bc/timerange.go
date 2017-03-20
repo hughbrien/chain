@@ -24,7 +24,15 @@ func NewTimeRange(minTimeMS, maxTimeMS uint64) *TimeRange {
 }
 
 func (tr *TimeRange) CheckValid(_ context.Context) error {
-	// xxx check MinTimeMS <= MaxTimeMS?
-	// xxx check ExtHash is all zeroes?
+	currentTx, _ := ctx.Value(vc.CurrentTx).(*TxEntries)
+	if tr.Body.MinTimeMS > currentTx.Body.MinTimeMS {
+		return errBadTimeRange
+	}
+	if tr.Body.MaxTimeMS > 0 && tr.Body.MaxTimeMS < currentTx.Body.MaxTimeMS {
+		return errBadTimeRange
+	}
+	if currentTx.Body.Version == 1 && (tr.Body.ExtHash != Hash{}) {
+		return errNonemptyExtHash
+	}
 	return nil
 }

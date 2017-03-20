@@ -21,5 +21,9 @@ func (c *Chain) checkIssuanceWindow(tx *bc.Tx) error {
 }
 
 func (c *Chain) ValidateTx(tx *bc.TxEntries) error {
+	err := c.checkIssuanceWindow(tx)
+	if err != nil {
+		return err
+	}
 	return bc.ValidateTx(tx, c.InitialBlockHash)
 }

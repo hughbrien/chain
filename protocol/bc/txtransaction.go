@@ -15,7 +15,6 @@ type TxEntries struct {
 	TxInputIDs []Hash  // 1:1 correspondence with TxData.Inputs
 
 	// IDs of reachable entries of various kinds to speed up Apply
-	// xxx populate these
 	NonceIDs       []Hash
 	SpentOutputIDs []Hash
 	OutputIDs      []Hash

@@ -63,8 +63,6 @@ func (s *Spend) SetAnchored(id Hash, entry Entry) {
 }
 
 func (s *Spend) CheckValid(ctx context.Context) error {
-	// xxx SpentOutput "present"
-
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
 	err := vm.Verify(NewTxVMContext(currentTx, s, s.SpentOutput.Body.ControlProgram, s.Witness.Arguments))
 	if err != nil {

@@ -73,22 +73,15 @@ func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *Sna
 			break
 		}
 
-		// TODO(jackson): Should this go in ConfirmTx too?
-		// xxx does this still apply?
-		err := c.checkIssuanceWindow(tx)
-		if err != nil {
-			continue
-		}
-
 		err = c.ValidateTx(tx.TxEntries)
 		if err != nil {
-			// xxx log it?
+			// TODO(bobg): log this?
 			continue
 		}
 
 		err = tx.TxEntries.Apply(newSnapshot)
 		if err != nil {
-			// xxx log it?
+			// TODO(bobg): log this?
 			continue
 		}
 

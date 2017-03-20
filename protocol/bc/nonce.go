@@ -56,7 +56,11 @@ func (n *Nonce) CheckValid(ctx context.Context) error {
 		return errors.Wrap(err, "checking nonce program")
 	}
 
-	// xxx recursively validate the timerange?
+	trCtx := context.WithValue(ctx, vcCurrentEntryID, n.Body.TimeRangeID)
+	err = n.TimeRange.CheckValid(trCtx)
+	if err != nil {
+		return errors.Wrap(err, "checking nonce timerange")
+	}
 
 	if n.TimeRange.Body.MinTimeMS == 0 || n.TimeRange.Body.MaxTimeMS == 0 {
 		return errZeroTime

@@ -64,7 +64,7 @@ func (b *BlockVMContext) AssetID() ([]byte, error)       { return nil, vm.ErrCon
 func (b *BlockVMContext) Amount() (uint64, error)        { return 0, vm.ErrContext }
 func (b *BlockVMContext) MinTimeMS() (uint64, error)     { return 0, vm.ErrContext }
 func (b *BlockVMContext) MaxTimeMS() (uint64, error)     { return 0, vm.ErrContext }
-func (b *BlockVMContext) EntryData() ([]byte, error)     { return nil, vm.ErrContext } // xxx ?
+func (b *BlockVMContext) EntryData() ([]byte, error)     { return nil, vm.ErrContext }
 func (b *BlockVMContext) TxData() ([]byte, error)        { return nil, vm.ErrContext }
 func (b *BlockVMContext) DestPos() (uint64, error)       { return 0, vm.ErrContext }
 func (b *BlockVMContext) AnchorID() ([]byte, error)      { return nil, vm.ErrContext }
@@ -231,7 +231,7 @@ func (t *TxVMContext) CheckOutput(index uint64, data []byte, amount uint64, asse
 
 	checkMux := func(m *Mux) (bool, error) {
 		if index >= uint64(len(m.Witness.Destinations)) {
-			// xxx error
+			return errors.Wrapf(vm.ErrBadValue, "index %d >= %d", index, len(m.Witness.Destinations))
 		}
 		return checkEntry(m.Witness.Destinations[index].Entry)
 	}
@@ -245,7 +245,7 @@ func (t *TxVMContext) CheckOutput(index uint64, data []byte, amount uint64, asse
 			return checkMux(m)
 		}
 		if index != 0 {
-			// xxx error
+			return errors.Wrapf(vm.ErrBadValue, "index %d >= 1", index)
 		}
 		return checkEntry(e.Witness.Destination.Entry)
 
@@ -254,7 +254,7 @@ func (t *TxVMContext) CheckOutput(index uint64, data []byte, amount uint64, asse
 			return checkMux(m)
 		}
 		if index != 0 {
-			// xxx error
+			return errors.Wrapf(vm.ErrBadValue, "index %d >= 1", index)
 		}
 		return checkEntry(e.Witness.Destination.Entry)
 	}

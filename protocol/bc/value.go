@@ -20,8 +20,6 @@ type ValueSource struct {
 // CheckValid checks the validity of a value source in the context of
 // its containing entry.
 func (vs *ValueSource) CheckValid(ctx context.Context) error {
-	// xxx check that Entry's ID equals Ref?
-
 	refCtx := context.WithValue(ctx, vcCurrentEntryID, vs.Ref)
 	err := vs.Entry.CheckValid(refCtx)
 	if err != nil {
@@ -80,8 +78,6 @@ type ValueDestination struct {
 }
 
 func (vd *ValueDestination) CheckValid(ctx context.Context) error {
-	// xxx check reachability of vd.Ref from transaction?
-
 	var src ValueSource
 	switch ref := vd.Entry.(type) {
 	case *Output:

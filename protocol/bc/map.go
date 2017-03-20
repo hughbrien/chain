@@ -191,7 +191,7 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 			// retirement
 			r := NewRetirement(src, hashData(out.ReferenceData), i)
 			var rID Hash
-			rID, err = addEntry(r) // xxx save ID for use in header (or simply skip the addEntry call?)
+			rID, err = addEntry(r)
 			if err != nil {
 				err = errors.Wrapf(err, "adding retirement entry for output %d", i)
 				return

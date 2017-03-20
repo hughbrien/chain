@@ -42,7 +42,7 @@ func opCheckOutput(vm *virtualMachine) error {
 	if err != nil {
 		return err
 	}
-	if index < 0 || index >= int64(numResults) {
+	if index < 0 {
 		return ErrBadValue
 	}
 	ok, err := vm.vmContext.CheckOutput(uint64(index), data, uint64(amount), assetID, uint64(vmVersion), code)
