@@ -43,8 +43,12 @@ var TraceOut io.Writer
 
 func Verify(vmContext VMContext) (err error) {
 	defer func() {
-		if pErr := recover(); pErr != nil {
-			err = ErrUnexpected
+		if r := recover(); r != nil {
+			if rErr, ok := r.(error); ok {
+				err = errors.Sub(ErrUnexpected, rErr)
+			} else {
+				err = ErrUnexpected
+			}
 		}
 	}()
 

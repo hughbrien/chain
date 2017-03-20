@@ -1,10 +1,13 @@
 package bc
 
-import "errors"
+import (
+	"errors"
+
+	"chain/protocol/vm"
+)
 
 var (
 	errBadTimeRange          = errors.New("bad time range")
-	errContext               = errors.New("wrong context")
 	errEmptyResults          = errors.New("transaction has no results")
 	errEntryType             = errors.New("invalid entry type")
 	errMismatchedAssetID     = errors.New("mismatched asset id")
@@ -54,20 +57,20 @@ func (b *BlockVMContext) NextConsensusProgram() ([]byte, error) {
 }
 
 func (b *BlockVMContext) TxVersion() (uint64, bool)      { return 0, false }
-func (b *BlockVMContext) TxSigHash() ([]byte, error)     { return nil, errContext }
-func (b *BlockVMContext) NumResults() (uint64, error)    { return 0, errContext }
-func (b *BlockVMContext) AssetID() ([]byte, error)       { return nil, errContext }
-func (b *BlockVMContext) Amount() (uint64, error)        { return 0, errContext }
-func (b *BlockVMContext) MinTimeMS() (uint64, error)     { return 0, errContext }
-func (b *BlockVMContext) MaxTimeMS() (uint64, error)     { return 0, errContext }
-func (b *BlockVMContext) EntryData() ([]byte, error)     { return nil, errContext } // xxx ?
-func (b *BlockVMContext) TxData() ([]byte, error)        { return nil, errContext }
-func (b *BlockVMContext) DestPos() (uint64, error)       { return 0, errContext }
-func (b *BlockVMContext) AnchorID() ([]byte, error)      { return nil, errContext }
-func (b *BlockVMContext) SpentOutputID() ([]byte, error) { return nil, errContext }
+func (b *BlockVMContext) TxSigHash() ([]byte, error)     { return nil, vm.ErrContext }
+func (b *BlockVMContext) NumResults() (uint64, error)    { return 0, vm.ErrContext }
+func (b *BlockVMContext) AssetID() ([]byte, error)       { return nil, vm.ErrContext }
+func (b *BlockVMContext) Amount() (uint64, error)        { return 0, vm.ErrContext }
+func (b *BlockVMContext) MinTimeMS() (uint64, error)     { return 0, vm.ErrContext }
+func (b *BlockVMContext) MaxTimeMS() (uint64, error)     { return 0, vm.ErrContext }
+func (b *BlockVMContext) EntryData() ([]byte, error)     { return nil, vm.ErrContext } // xxx ?
+func (b *BlockVMContext) TxData() ([]byte, error)        { return nil, vm.ErrContext }
+func (b *BlockVMContext) DestPos() (uint64, error)       { return 0, vm.ErrContext }
+func (b *BlockVMContext) AnchorID() ([]byte, error)      { return nil, vm.ErrContext }
+func (b *BlockVMContext) SpentOutputID() ([]byte, error) { return nil, vm.ErrContext }
 
 func (b *BlockVMContext) CheckOutput(uint64, []byte, uint64, []byte, uint64, []byte) (bool, error) {
-	return false, errContext
+	return false, vm.ErrContext
 }
 
 func NewBlockVMContext(block *BlockEntries, prog []byte, args [][]byte) *BlockVMContext {
@@ -101,17 +104,17 @@ func (t *TxVMContext) VMVersion() uint64   { return t.prog.VMVersion }
 func (t *TxVMContext) Code() []byte        { return t.prog.Code }
 func (t *TxVMContext) Arguments() [][]byte { return t.args }
 
-func (t *TxVMContext) BlockHash() ([]byte, error)   { return nil, errContext }
-func (t *TxVMContext) BlockTimeMS() (uint64, error) { return 0, errContext }
+func (t *TxVMContext) BlockHash() ([]byte, error)   { return nil, vm.ErrContext }
+func (t *TxVMContext) BlockTimeMS() (uint64, error) { return 0, vm.ErrContext }
 
-func (t *TxVMContext) NextConsensusProgram() ([]byte, error) { return nil, errContext }
+func (t *TxVMContext) NextConsensusProgram() ([]byte, error) { return nil, vm.ErrContext }
 
 func (t *TxVMContext) TxVersion() (uint64, bool) { return t.tx.Body.Version, true }
 
 func (t *TxVMContext) TxSigHash() ([]byte, error) {
 	ord := t.entry.Ordinal()
 	if ord < 0 {
-		return nil, errContext
+		return nil, vm.ErrContext
 	}
 	h := t.tx.SigHash(uint32(ord))
 	return h[:], nil
@@ -125,7 +128,7 @@ func (t *TxVMContext) AssetID() ([]byte, error) {
 		if iss, ok := inp.Anchored.(*Issuance); ok {
 			return iss.Body.Value.AssetID[:], nil
 		}
-		return nil, errContext
+		return nil, vm.ErrContext
 
 	case *Issuance:
 		return inp.Body.Value.AssetID[:], nil
@@ -134,7 +137,7 @@ func (t *TxVMContext) AssetID() ([]byte, error) {
 		return inp.SpentOutput.Body.Source.Value.AssetID[:], nil
 	}
 
-	return nil, errContext
+	return nil, vm.ErrContext
 }
 
 func (t *TxVMContext) Amount() (uint64, error) {
@@ -143,7 +146,7 @@ func (t *TxVMContext) Amount() (uint64, error) {
 		if iss, ok := inp.Anchored.(*Issuance); ok {
 			return iss.Body.Value.Amount, nil
 		}
-		return 0, errContext
+		return 0, vm.ErrContext
 
 	case *Issuance:
 		return inp.Body.Value.Amount, nil
@@ -152,7 +155,7 @@ func (t *TxVMContext) Amount() (uint64, error) {
 		return inp.SpentOutput.Body.Source.Value.Amount, nil
 	}
 
-	return 0, errContext
+	return 0, vm.ErrContext
 }
 
 func (t *TxVMContext) MinTimeMS() (uint64, error) { return t.tx.Body.MinTimeMS, nil }
@@ -173,7 +176,7 @@ func (t *TxVMContext) EntryData() ([]byte, error) {
 		return inp.Body.Data[:], nil
 	}
 
-	return nil, errContext
+	return nil, vm.ErrContext
 }
 
 func (t *TxVMContext) TxData() ([]byte, error) { return t.tx.Body.Data[:], nil }
@@ -187,24 +190,24 @@ func (t *TxVMContext) DestPos() (uint64, error) {
 		return inp.Witness.Destination.Position, nil
 	}
 
-	return 0, errContext
+	return 0, vm.ErrContext
 }
 
 func (t *TxVMContext) AnchorID() ([]byte, error) {
 	if inp, ok := t.entry.(*Issuance); ok {
 		return inp.Body.AnchorID[:], nil
 	}
-	return nil, errContext
+	return nil, vm.ErrContext
 }
 
 func (t *TxVMContext) SpentOutputID() ([]byte, error) {
 	if inp, ok := t.entry.(*Spend); ok {
 		return inp.Body.SpentOutputID[:], nil
 	}
-	return nil, errContext
+	return nil, vm.ErrContext
 }
 
 func (t *TxVMContext) CheckOutput(uint64, []byte, uint64, []byte, uint64, []byte) (bool, error) {
 	// xxx
-	return false, errContext
+	return false, vm.ErrContext
 }
