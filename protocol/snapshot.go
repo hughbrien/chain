@@ -1,6 +1,8 @@
 package protocol
 
 import (
+	"fmt"
+
 	"chain/errors"
 	"chain/protocol/bc"
 	"chain/protocol/patricia"
@@ -20,7 +22,7 @@ type Snapshot struct {
 
 func (s *Snapshot) AddNonce(id bc.Hash, expiryMS uint64) error {
 	if s.Nonces[id] >= expiryMS {
-		// xxx error
+		return fmt.Errorf("conflicting nonce %x", id[:])
 	}
 	s.Nonces[id] = expiryMS
 	return nil
@@ -28,7 +30,7 @@ func (s *Snapshot) AddNonce(id bc.Hash, expiryMS uint64) error {
 
 func (s *Snapshot) DeleteSpentOutput(id bc.Hash) error {
 	if !s.Tree.Contains(id[:]) {
-		// xxx error
+		return fmt.Errorf("invalid prevout %x", id[:])
 	}
 	s.Tree.Delete(id[:])
 	return nil

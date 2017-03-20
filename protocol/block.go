@@ -65,6 +65,9 @@ func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *Sna
 
 	var txEntries []*bc.TxEntries
 
+	newSnapshot := c.state.snapshot.Copy()
+	newSnapshot.PruneNonces(timestampMS)
+
 	for _, tx := range txs {
 		if len(b.Transactions) >= maxBlockTxs {
 			break
@@ -83,14 +86,17 @@ func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *Sna
 			continue
 		}
 
+		err = tx.TxEntries.Apply(newSnapshot)
+		if err != nil {
+			// xxx log it?
+			continue
+		}
+
 		b.Transactions = append(b.Transactions, tx)
 		txEntries = append(txEntries, tx.TxEntries)
 	}
 
-	newSnapshot, err := c.ApplyNewBlock(b)
-	if err != nil {
-		return nil, nil, err
-	}
+	var err error
 
 	b.TransactionsMerkleRoot, err = bc.CalcMerkleRoot(txEntries)
 	if err != nil {
@@ -140,7 +146,8 @@ func (c *Chain) validateBlock(block, prev *bc.Block, runProg bool) error {
 // ApplyValidBlock creates an updated snapshot without validating the
 // block.
 func (c *Chain) ApplyValidBlock(block *bc.Block) (*Snapshot, error) {
-	newSnapshot, err := c.ApplyNewBlock(block)
+	newSnapshot := c.state.snapshot.Copy()
+	err := newSnapshot.ApplyBlock(bc.MapBlock(block))
 	if err != nil {
 		return nil, err
 	}
@@ -148,16 +155,6 @@ func (c *Chain) ApplyValidBlock(block *bc.Block) (*Snapshot, error) {
 		return nil, ErrBadStateRoot
 	}
 	return newSnapshot, nil
-}
-
-// ApplyNewBlock creates an updated snapshot without validating, like
-// ApplyValidBlock, but doesn't check the assets merkle root, on the
-// assumption that the block is still under construction (viz., by
-// GenerateBlock) and doesn't have its AssetsMerkleRoot field filled
-// in yet.
-func (c *Chain) ApplyNewBlock(block *bc.Block) (*Snapshot, error) {
-	newSnapshot := c.state.snapshot.Copy()
-	return newSnapshot, newSnapshot.ApplyBlock(bc.MapBlock(block))
 }
 
 // CommitAppliedBlock commits a block to the blockchain. The block
