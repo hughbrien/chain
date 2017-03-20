@@ -1,10 +1,11 @@
 package bc
 
 import (
+	"context"
+
 	"chain/errors"
 	"chain/math/checked"
 	"chain/protocol/vm"
-	"context"
 )
 
 // Mux splits and combines value from one or more source entries,

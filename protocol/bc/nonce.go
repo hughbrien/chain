@@ -44,6 +44,11 @@ func NewNonce(p Program, tr *TimeRange) *Nonce {
 	return n
 }
 
+func (n *Nonce) SetAnchored(id Hash, entry Entry) {
+	n.Witness.AnchoredID = id
+	n.Anchored = entry
+}
+
 func (n *Nonce) CheckValid(ctx context.Context) error {
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
 	err := vm.Verify(NewTxVMContext(currentTx, n, n.Body.Program, n.Witness.Arguments))

@@ -28,7 +28,7 @@ type TxEntries struct {
 func ValidateTx(tx *TxEntries, initialBlockID Hash) error {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, vcInitialBlockID, initialBlockID)
-	return tx.TxHeader.CheckValid(ctx)
+	return tx.CheckValid(ctx)
 }
 
 func (tx *TxEntries) CheckValid(ctx context.Context) error {
@@ -123,10 +123,28 @@ func ComputeTxEntries(oldTx *TxData) (txEntries *TxEntries, err error) {
 		TxInputIDs: make([]Hash, len(oldTx.Inputs)),
 	}
 
+	var (
+		nonceIDs       = make(map[Hash]bool)
+		spentOutputIDs = make(map[Hash]bool)
+		outputIDs      = make(map[Hash]bool)
+	)
+
 	for id, e := range entries {
-		switch e.(type) {
+		switch e := e.(type) {
 		case *Issuance:
+			if _, ok := e.Anchor.(*Nonce); ok {
+				nonceIDs[e.Body.AnchorID] = true
+			}
+			// resume below after the switch
+
 		case *Spend:
+			spentOutputIDs[e.Body.SpentOutputID] = true
+			// resume below after the switch
+
+		case *Output:
+			outputIDs[id] = true
+			continue
+
 		default:
 			continue
 		}
@@ -136,6 +154,16 @@ func ComputeTxEntries(oldTx *TxData) (txEntries *TxEntries, err error) {
 		}
 		txEntries.TxInputs[ord] = e
 		txEntries.TxInputIDs[ord] = id
+	}
+
+	for id := range nonceIDs {
+		txEntries.NonceIDs = append(txEntries.NonceIDs, id)
+	}
+	for id := range spentOutputIDs {
+		txEntries.SpentOutputIDs = append(txEntries.SpentOutputIDs, id)
+	}
+	for id := range outputIDs {
+		txEntries.OutputIDs = append(txEntries.OutputIDs, id)
 	}
 
 	return txEntries, nil

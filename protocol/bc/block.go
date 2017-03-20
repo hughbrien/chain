@@ -70,6 +70,7 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) err
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, vcInitialBlockID, initialBlockID)
+	ctx = context.WithValue(ctx, vcCurrentEntryID, b.ID)
 
 	err := b.BlockHeaderEntry.CheckValid(ctx)
 	if err != nil {

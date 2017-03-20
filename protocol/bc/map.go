@@ -68,7 +68,10 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 			// programs are omitted here because they do not contribute to
 			// the body hash of an issuance.
 
-			var nonce Entry
+			var (
+				nonce       Entry
+				setAnchored func(Hash, *Issuance)
+			)
 
 			if len(oldIss.Nonce) == 0 {
 				if firstSpend == nil {
@@ -76,6 +79,9 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 					return
 				}
 				nonce = firstSpend
+				setAnchored = func(id Hash, iss *Issuance) {
+					firstSpend.SetAnchored(id, iss)
+				}
 			} else {
 				tr := NewTimeRange(tx.MinTime, tx.MaxTime)
 				_, err = addEntry(tr)
@@ -114,12 +120,18 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 				code = append(code, assetID[:]...)
 				code = append(code, 0x87)
 
-				nonce = NewNonce(Program{VMVersion: 1, Code: code}, tr)
+				n := NewNonce(Program{VMVersion: 1, Code: code}, tr)
 				_, err = addEntry(nonce)
 				if err != nil {
 					err = errors.Wrapf(err, "adding nonce entry for input %d", i)
 					return
 				}
+
+				setAnchored = func(id Hash, iss *Issuance) {
+					n.SetAnchored(id, iss)
+				}
+
+				nonce = n
 			}
 
 			val := inp.AssetAmount()
@@ -139,6 +151,8 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 				return
 			}
 
+			setAnchored(issID, iss)
+
 			muxSources[i] = ValueSource{
 				Ref:   issID,
 				Value: val,
@@ -157,10 +171,10 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 	}
 
 	for _, sp := range spends {
-		sp.SetDestination(muxID, uint64(sp.Ordinal()), mux)
+		sp.SetDestination(muxID, sp.SpentOutput.Body.Source.Value, uint64(sp.Ordinal()), mux)
 	}
 	for _, iss := range issuances {
-		iss.SetDestination(muxID, uint64(iss.Ordinal()), mux)
+		iss.SetDestination(muxID, iss.Body.Value, uint64(iss.Ordinal()), mux)
 	}
 
 	var results []Entry
@@ -205,6 +219,7 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 				Entry:    o,
 			}
 		}
+		dest.Value = src.Value
 		mux.Witness.Destinations = append(mux.Witness.Destinations, dest)
 	}
 

@@ -1,9 +1,10 @@
 package bc
 
 import (
+	"context"
+
 	"chain/errors"
 	"chain/protocol/vm"
-	"context"
 )
 
 // Issuance is a source of new value on a blockchain. It satisfies the
@@ -40,9 +41,10 @@ func (iss *Issuance) body() interface{} { return iss.Body }
 
 func (iss Issuance) Ordinal() int { return iss.ordinal }
 
-func (iss *Issuance) SetDestination(id Hash, pos uint64, e Entry) {
+func (iss *Issuance) SetDestination(id Hash, val AssetAmount, pos uint64, e Entry) {
 	iss.Witness.Destination = ValueDestination{
 		Ref:      id,
+		Value:    val,
 		Position: pos,
 		Entry:    e,
 	}

@@ -38,9 +38,10 @@ func (s *Spend) body() interface{} { return s.Body }
 
 func (s Spend) Ordinal() int { return s.ordinal }
 
-func (s *Spend) SetDestination(id Hash, pos uint64, e Entry) {
+func (s *Spend) SetDestination(id Hash, val AssetAmount, pos uint64, e Entry) {
 	s.Witness.Destination = ValueDestination{
 		Ref:      id,
+		Value:    val,
 		Position: pos,
 		Entry:    e,
 	}
@@ -54,6 +55,11 @@ func NewSpend(out *Output, data Hash, ordinal int) *Spend {
 	s.ordinal = ordinal
 	s.SpentOutput = out
 	return s
+}
+
+func (s *Spend) SetAnchored(id Hash, entry Entry) {
+	s.Witness.AnchoredID = id
+	s.Anchored = entry
 }
 
 func (s *Spend) CheckValid(ctx context.Context) error {

@@ -63,10 +63,11 @@ func Verify(vmContext VMContext) (err error) {
 		expansionReserved: ok && (txVersion == 1),
 		program:           code,
 		runLimit:          initialRunLimit,
+		vmContext:         vmContext,
 	}
 
 	args := vmContext.Arguments()
-	for i, arg := range vmContext.Arguments() {
+	for i, arg := range args {
 		err = vm.push(arg, false)
 		if err != nil {
 			return errors.Wrapf(err, "pushing initial argument %d", i)

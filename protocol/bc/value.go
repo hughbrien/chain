@@ -22,8 +22,8 @@ type ValueSource struct {
 func (vs *ValueSource) CheckValid(ctx context.Context) error {
 	// xxx check that Entry's ID equals Ref?
 
-	ctx = context.WithValue(ctx, vcCurrentEntryID, vs.Ref)
-	err := vs.Entry.CheckValid(ctx)
+	refCtx := context.WithValue(ctx, vcCurrentEntryID, vs.Ref)
+	err := vs.Entry.CheckValid(refCtx)
 	if err != nil {
 		return errors.Wrap(err, "checking value source")
 	}

@@ -45,13 +45,13 @@ func (c *Chain) GetBlock(ctx context.Context, height uint64) (*bc.Block, error) 
 //
 // After generating the block, the pending transaction pool will be
 // empty.
-func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *Snapshot, now time.Time, txs []*bc.Tx) (b *bc.Block, result *Snapshot, err error) {
+func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *Snapshot, now time.Time, txs []*bc.Tx) (*bc.Block, *Snapshot, error) {
 	timestampMS := bc.Millis(now)
 	if timestampMS < prev.TimestampMS {
 		return nil, nil, fmt.Errorf("timestamp %d is earlier than prevblock timestamp %d", timestampMS, prev.TimestampMS)
 	}
 
-	b = &bc.Block{
+	b := &bc.Block{
 		BlockHeader: bc.BlockHeader{
 			Version:           bc.NewBlockVersion,
 			Height:            prev.Height + 1,
@@ -72,7 +72,7 @@ func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *Sna
 
 		// TODO(jackson): Should this go in ConfirmTx too?
 		// xxx does this still apply?
-		err = c.checkIssuanceWindow(tx)
+		err := c.checkIssuanceWindow(tx)
 		if err != nil {
 			continue
 		}
@@ -99,7 +99,7 @@ func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *Sna
 
 	b.AssetsMerkleRoot = newSnapshot.Tree.RootHash()
 
-	return b, result, nil
+	return b, newSnapshot, nil
 }
 
 func (c *Chain) ValidateBlock(block, prev *bc.Block) error {
