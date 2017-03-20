@@ -310,6 +310,13 @@ func TestRun(t *testing.T) {
 }
 
 func TestStep(t *testing.T) {
+	tx := bc.NewTx(bc.TxData{
+		Version: 1,
+		Inputs: []*bc.TxInput{
+			bc.NewSpendInput(nil, bc.Hash{}, bc.AssetID{}, 1, 0, nil, bc.Hash{}, nil),
+		},
+	})
+	txVMContext := bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{}, nil)
 	cases := []struct {
 		startVM *VirtualMachine
 		wantVM  *VirtualMachine
@@ -398,7 +405,7 @@ func TestStep(t *testing.T) {
 		startVM: &VirtualMachine{
 			Program:   []byte{byte(OP_INDEX)},
 			RunLimit:  1,
-			VMContext: bc.NewTxVMContext(bc.NewTx(bc.TxData{}).TxEntries, nil, bc.Program{}, nil),
+			VMContext: txVMContext,
 		},
 		wantErr: ErrRunLimitExceeded,
 	}, {

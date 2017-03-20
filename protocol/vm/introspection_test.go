@@ -263,19 +263,19 @@ func TestIntrospectionOps(t *testing.T) {
 			DataStack:    [][]byte{{}},
 			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
-	}, {
-		op: OP_CHECKOUTPUT,
-		startVM: &VirtualMachine{
-			DataStack: [][]byte{
-				{0},
-				mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
-				{7},
-				append([]byte{2}, make([]byte, 31)...),
-				{1},
-				[]byte("controlprog"),
-			},
-		},
-		wantErr: ErrContext,
+		// }, {
+		// 	op: OP_CHECKOUTPUT,
+		// 	startVM: &VirtualMachine{
+		// 		DataStack: [][]byte{
+		// 			{0},
+		// 			mustDecodeHex("1f2a05f881ed9fa0c9068a84823677409f863891a2196eb55dbfbb677a566374"),
+		// 			{7},
+		// 			append([]byte{2}, make([]byte, 31)...),
+		// 			{1},
+		// 			[]byte("controlprog"),
+		// 		},
+		// 	},
+		// 	wantErr: ErrContext,
 	}, {
 		op: OP_CHECKOUTPUT,
 		startVM: &VirtualMachine{
@@ -522,10 +522,10 @@ func TestIntrospectionOps(t *testing.T) {
 				VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 			},
 			wantErr: ErrRunLimitExceeded,
-		}, testStruct{
-			op:      op,
-			startVM: &VirtualMachine{},
-			wantErr: ErrContext,
+			// }, testStruct{
+			// 	op:      op,
+			// 	startVM: &VirtualMachine{},
+			// 	wantErr: ErrContext,
 		})
 	}
 

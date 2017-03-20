@@ -1,6 +1,7 @@
 package bc
 
 import (
+	"bytes"
 	"errors"
 
 	"chain/protocol/vm"
@@ -207,7 +208,56 @@ func (t *TxVMContext) SpentOutputID() ([]byte, error) {
 	return nil, vm.ErrContext
 }
 
-func (t *TxVMContext) CheckOutput(uint64, []byte, uint64, []byte, uint64, []byte) (bool, error) {
-	// xxx
+func (t *TxVMContext) CheckOutput(index uint64, data []byte, amount uint64, assetID []byte, vmVersion uint64, code []byte) (bool, error) {
+	checkEntry := func(e Entry) (bool, error) {
+		check := func(prog Program, value AssetAmount, dataHash Hash) bool {
+			return (prog.VMVersion == vmVersion &&
+				bytes.Equal(prog.Code, code) &&
+				bytes.Equal(value.AssetID[:], assetID) &&
+				value.Amount == amount &&
+				(len(data) == 0 || bytes.Equal(dataHash[:], data)))
+		}
+
+		switch e := e.(type) {
+		case *Output:
+			return check(e.Body.ControlProgram, e.Body.Source.Value, e.Body.Data), nil
+
+		case *Retirement:
+			return check(Program{}, e.Body.Source.Value, e.Body.Data), nil
+		}
+
+		return false, vm.ErrContext
+	}
+
+	checkMux := func(m *Mux) (bool, error) {
+		if index >= uint64(len(m.Witness.Destinations)) {
+			// xxx error
+		}
+		return checkEntry(m.Witness.Destinations[index].Entry)
+	}
+
+	switch e := t.entry.(type) {
+	case *Mux:
+		return checkMux(e)
+
+	case *Issuance:
+		if m, ok := e.Witness.Destination.Entry.(*Mux); ok {
+			return checkMux(m)
+		}
+		if index != 0 {
+			// xxx error
+		}
+		return checkEntry(e.Witness.Destination.Entry)
+
+	case *Spend:
+		if m, ok := e.Witness.Destination.Entry.(*Mux); ok {
+			return checkMux(m)
+		}
+		if index != 0 {
+			// xxx error
+		}
+		return checkEntry(e.Witness.Destination.Entry)
+	}
+
 	return false, vm.ErrContext
 }
