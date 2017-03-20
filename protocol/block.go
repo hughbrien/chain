@@ -106,12 +106,31 @@ func (c *Chain) ValidateBlock(block, prev *bc.Block) error {
 	return c.validateBlock(block, prev, true)
 }
 
-func (c *Chain) ValidateBlockForSig(block, prev *bc.Block) error {
+func (c *Chain) ValidateBlockForSig(ctx context.Context, block *bc.Block) error {
+	var prev *bc.Block
+
+	if block.Height > 1 {
+		var err error
+		prev, err = c.store.GetBlock(ctx, block.Height-1)
+		if err != nil {
+			return errors.Wrap(err, "getting previous block")
+		}
+
+		prev, _ = c.State()
+		if prev == nil || prev.Height != block.Height-1 {
+			return ErrStaleState
+		}
+	}
+
 	return c.validateBlock(block, prev, false)
 }
 
 func (c *Chain) validateBlock(block, prev *bc.Block, runProg bool) error {
-	err := bc.ValidateBlock(bc.MapBlock(block), bc.MapBlock(prev), c.InitialBlockHash, runProg)
+	var prevEntries *bc.BlockEntries
+	if prev != nil {
+		prevEntries = bc.MapBlock(prev)
+	}
+	err := bc.ValidateBlock(bc.MapBlock(block), prevEntries, c.InitialBlockHash, runProg)
 	if err != nil {
 		return errors.Sub(ErrBadBlock, err)
 	}

@@ -203,7 +203,7 @@ func TestValidateBlockForSig(t *testing.T) {
 		t.Fatal("unexpected error ", err)
 	}
 
-	err = c.ValidateBlockForSig(initialBlock, nil)
+	err = c.ValidateBlockForSig(ctx, initialBlock)
 	if err != nil {
 		t.Error("unexpected error ", err)
 	}
