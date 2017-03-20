@@ -82,13 +82,13 @@ func (vd *ValueDestination) CheckValid(ctx context.Context) error {
 	switch ref := vd.Entry.(type) {
 	case *Output:
 		if vd.Position != 0 {
-			fmt.Errorf("invalid position %d for output destination", vd.Position)
+			return fmt.Errorf("invalid position %d for output destination", vd.Position)
 		}
 		src = ref.Body.Source
 
 	case *Retirement:
 		if vd.Position != 0 {
-			fmt.Errorf("invalid position %d for retirement destination", vd.Position)
+			return fmt.Errorf("invalid position %d for retirement destination", vd.Position)
 		}
 		src = ref.Body.Source
 
