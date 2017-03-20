@@ -434,7 +434,7 @@ func TestCryptoOps(t *testing.T) {
 			VMContext: bc.NewBlockVMContext(bc.MapBlock(&bc.Block{}), nil, nil),
 		},
 		wantVM: &VirtualMachine{
-			RunLimit: 49960,
+			RunLimit: 49959,
 			DataStack: [][]byte{{
 				240, 133, 79, 136, 180, 137, 0, 153,
 				47, 236, 64, 67, 249, 101, 250, 2,

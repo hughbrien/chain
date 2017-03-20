@@ -38,10 +38,6 @@ func opCheckOutput(vm *virtualMachine) error {
 	if err != nil {
 		return err
 	}
-	numResults, err := vm.vmContext.NumResults()
-	if err != nil {
-		return err
-	}
 	if index < 0 {
 		return ErrBadValue
 	}

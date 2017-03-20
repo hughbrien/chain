@@ -23,8 +23,8 @@ func NewTimeRange(minTimeMS, maxTimeMS uint64) *TimeRange {
 	return tr
 }
 
-func (tr *TimeRange) CheckValid(_ context.Context) error {
-	currentTx, _ := ctx.Value(vc.CurrentTx).(*TxEntries)
+func (tr *TimeRange) CheckValid(ctx context.Context) error {
+	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
 	if tr.Body.MinTimeMS > currentTx.Body.MinTimeMS {
 		return errBadTimeRange
 	}

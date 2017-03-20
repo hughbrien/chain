@@ -18,7 +18,7 @@ type IssuanceInput struct {
 
 func (ii *IssuanceInput) IsIssuance() bool { return true }
 
-func (ii *IssuanceInput) AssetID() AssetID {
+func (ii *IssuanceInput) AssetID() (AssetID, error) {
 	def := &AssetDefinition{
 		InitialBlockID: ii.InitialBlock,
 		IssuanceProgram: Program{

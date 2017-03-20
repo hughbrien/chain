@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"chain/crypto/sha3pool"
+	"chain/errors"
 	"chain/protocol/bc"
 	. "chain/protocol/vm"
 	"chain/testutil"
@@ -103,7 +104,10 @@ func TestOutputIDAndNonceOp(t *testing.T) {
 	issuanceProgram := []byte("issueprog")
 	var emptyHash bc.Hash
 	sha3pool.Sum256(emptyHash[:], nil)
-	assetID := bc.ComputeAssetID(issuanceProgram, zeroHash, 1, emptyHash)
+	assetID, err := bc.ComputeAssetID(issuanceProgram, zeroHash, 1, emptyHash)
+	if err != nil {
+		t.Fatal(err)
+	}
 	tx := bc.NewTx(bc.TxData{
 		Inputs: []*bc.TxInput{
 			bc.NewSpendInput(nil, bc.Hash{}, assetID, 5, 0, []byte("spendprog"), bc.Hash{}, []byte("ref")),
@@ -537,7 +541,7 @@ func TestIntrospectionOps(t *testing.T) {
 		}
 		vm.Program = prog
 		gotVM, err := vm.Run()
-		switch err {
+		switch errors.Root(err) {
 		case c.wantErr:
 			// ok
 		case nil:

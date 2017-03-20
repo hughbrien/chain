@@ -142,12 +142,14 @@ func opTxSigHash(vm *virtualMachine) error {
 }
 
 func opBlockHash(vm *virtualMachine) error {
+	err := vm.applyCost(1)
+	if err != nil {
+		return err
+	}
 	h, err := vm.vmContext.BlockHash()
 	if err != nil {
 		return errors.Wrap(err, "computing blockhash")
 	}
-
-	// xxx extra cost?
 
 	return vm.push(h, false)
 }

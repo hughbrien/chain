@@ -67,13 +67,16 @@ func (iss *Issuance) CheckValid(ctx context.Context) error {
 		return errors.WithDetailf(errWrongBlockchain, "current blockchain %x, asset defined on blockchain %x", initialBlockID[:], iss.Witness.AssetDefinition.InitialBlockID[:])
 	}
 
-	computedAssetID := iss.Witness.AssetDefinition.ComputeAssetID()
+	computedAssetID, err := iss.Witness.AssetDefinition.ComputeAssetID()
+	if err != nil {
+		return errors.Wrap(err, "computing asset ID")
+	}
 	if computedAssetID != iss.Body.Value.AssetID {
 		return errors.WithDetailf(errMismatchedAssetID, "asset ID is %x, issuance wants %x", computedAssetID[:], iss.Body.Value.AssetID[:])
 	}
 
 	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(NewTxVMContext(currentTx, iss, iss.Witness.AssetDefinition.IssuanceProgram, iss.Witness.Arguments))
+	err = vm.Verify(NewTxVMContext(currentTx, iss, iss.Witness.AssetDefinition.IssuanceProgram, iss.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking issuance program")
 	}

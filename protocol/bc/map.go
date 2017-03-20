@@ -90,7 +90,11 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 					return
 				}
 
-				assetID := oldIss.AssetID()
+				var assetID AssetID
+				assetID, err = oldIss.AssetID()
+				if err != nil {
+					return
+				}
 
 				// This is the program
 				//   [PUSHDATA(oldIss.Nonce) DROP ASSET PUSHDATA(assetID) EQUAL]
@@ -134,7 +138,11 @@ func mapTx(tx *TxData) (headerID Hash, hdr *TxHeader, entryMap map[Hash]Entry, e
 				nonce = n
 			}
 
-			val := inp.AssetAmount()
+			var val AssetAmount
+			val, err = inp.AssetAmount()
+			if err != nil {
+				return
+			}
 
 			iss := NewIssuance(nonce, val, hashData(inp.ReferenceData), i)
 			iss.Witness.AssetDefinition.InitialBlockID = oldIss.InitialBlock

@@ -8,11 +8,13 @@ import (
 // ErrBadTx is returned for transactions failing validation
 var ErrBadTx = errors.New("invalid transaction")
 
-func (c *Chain) checkIssuanceWindow(tx *bc.Tx) error {
-	for _, txi := range tx.Inputs {
-		if _, ok := txi.TypedInput.(*bc.IssuanceInput); ok {
-			// TODO(tessr): consider removing 0 check once we can configure this
-			if c.MaxIssuanceWindow != 0 && tx.MinTime+bc.DurationMillis(c.MaxIssuanceWindow) < tx.MaxTime {
+func (c *Chain) checkIssuanceWindow(tx *bc.TxEntries) error {
+	if c.MaxIssuanceWindow == 0 {
+		return nil
+	}
+	for _, entry := range tx.TxInputs {
+		if _, ok := entry.(*bc.Issuance); ok {
+			if tx.Body.MinTimeMS+bc.DurationMillis(c.MaxIssuanceWindow) < tx.Body.MaxTimeMS {
 				return errors.WithDetailf(ErrBadTx, "issuance input's time window is larger than the network maximum (%s)", c.MaxIssuanceWindow)
 			}
 		}

@@ -73,7 +73,7 @@ func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *Sna
 			break
 		}
 
-		err = c.ValidateTx(tx.TxEntries)
+		err := c.ValidateTx(tx.TxEntries)
 		if err != nil {
 			// TODO(bobg): log this?
 			continue
