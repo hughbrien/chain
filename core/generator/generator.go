@@ -13,6 +13,7 @@ import (
 	"chain/log"
 	"chain/protocol"
 	"chain/protocol/bc"
+	"chain/protocol/state"
 )
 
 // A BlockSigner signs blocks.
@@ -40,7 +41,7 @@ type Generator struct {
 	// generator.Generate() should return and this struct should be
 	// garbage collected.
 	latestBlock    *bc.Block
-	latestSnapshot *protocol.Snapshot
+	latestSnapshot *state.Snapshot
 }
 
 // New creates and initializes a new Generator.
@@ -92,7 +93,7 @@ func (g *Generator) Generate(
 	period time.Duration,
 	health func(error),
 	recoveredBlock *bc.Block,
-	recoveredSnapshot *protocol.Snapshot,
+	recoveredSnapshot *state.Snapshot,
 ) {
 	g.latestBlock, g.latestSnapshot = recoveredBlock, recoveredSnapshot
 

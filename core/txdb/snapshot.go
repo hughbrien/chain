@@ -9,14 +9,14 @@ import (
 	"chain/database/pg"
 	"chain/database/sql"
 	"chain/errors"
-	"chain/protocol"
 	"chain/protocol/bc"
 	"chain/protocol/patricia"
+	"chain/protocol/state"
 )
 
 // DecodeSnapshot decodes a snapshot from the Chain Core's binary,
 // protobuf representation of the snapshot.
-func DecodeSnapshot(data []byte) (*protocol.Snapshot, error) {
+func DecodeSnapshot(data []byte) (*state.Snapshot, error) {
 	var storedSnapshot storage.Snapshot
 	err := proto.Unmarshal(data, &storedSnapshot)
 	if err != nil {
@@ -38,13 +38,13 @@ func DecodeSnapshot(data []byte) (*protocol.Snapshot, error) {
 		nonces[hash] = nonce.ExpiryMs
 	}
 
-	return &protocol.Snapshot{
+	return &state.Snapshot{
 		Tree:   tree,
 		Nonces: nonces,
 	}, nil
 }
 
-func storeStateSnapshot(ctx context.Context, db pg.DB, snapshot *protocol.Snapshot, blockHeight uint64) error {
+func storeStateSnapshot(ctx context.Context, db pg.DB, snapshot *state.Snapshot, blockHeight uint64) error {
 	var storedSnapshot storage.Snapshot
 	err := patricia.Walk(snapshot.Tree, func(key []byte) error {
 		n := &storage.Snapshot_StateTreeNode{Key: key}
@@ -83,7 +83,7 @@ func storeStateSnapshot(ctx context.Context, db pg.DB, snapshot *protocol.Snapsh
 	return errors.Wrap(err, "deleting old snapshots")
 }
 
-func getStateSnapshot(ctx context.Context, db pg.DB) (*protocol.Snapshot, uint64, error) {
+func getStateSnapshot(ctx context.Context, db pg.DB) (*state.Snapshot, uint64, error) {
 	const q = `
 		SELECT data, height FROM snapshots ORDER BY height DESC LIMIT 1
 	`
@@ -94,7 +94,7 @@ func getStateSnapshot(ctx context.Context, db pg.DB) (*protocol.Snapshot, uint64
 
 	err := db.QueryRow(ctx, q).Scan(&data, &height)
 	if err == sql.ErrNoRows {
-		return protocol.NewSnapshot(), 0, nil
+		return state.Empty(), 0, nil
 	} else if err != nil {
 		return nil, height, errors.Wrap(err, "retrieving state snapshot blob")
 	}

@@ -9,6 +9,7 @@ import (
 	"chain/errors"
 	"chain/log"
 	"chain/protocol/bc"
+	"chain/protocol/state"
 	"chain/protocol/vmutil"
 )
 
@@ -45,7 +46,7 @@ func (c *Chain) GetBlock(ctx context.Context, height uint64) (*bc.Block, error) 
 //
 // After generating the block, the pending transaction pool will be
 // empty.
-func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *Snapshot, now time.Time, txs []*bc.Tx) (*bc.Block, *Snapshot, error) {
+func (c *Chain) GenerateBlock(ctx context.Context, prev *bc.Block, snapshot *state.Snapshot, now time.Time, txs []*bc.Tx) (*bc.Block, *state.Snapshot, error) {
 	timestampMS := bc.Millis(now)
 	if timestampMS < prev.TimestampMS {
 		return nil, nil, fmt.Errorf("timestamp %d is earlier than prevblock timestamp %d", timestampMS, prev.TimestampMS)
@@ -138,7 +139,7 @@ func (c *Chain) validateBlock(block, prev *bc.Block, runProg bool) error {
 
 // ApplyValidBlock creates an updated snapshot without validating the
 // block.
-func (c *Chain) ApplyValidBlock(block *bc.Block) (*Snapshot, error) {
+func (c *Chain) ApplyValidBlock(block *bc.Block) (*state.Snapshot, error) {
 	newSnapshot := c.state.snapshot.Copy()
 	err := newSnapshot.ApplyBlock(bc.MapBlock(block))
 	if err != nil {
@@ -159,7 +160,7 @@ func (c *Chain) ApplyValidBlock(block *bc.Block) (*Snapshot, error) {
 //   * saves the block to the store.
 //   * sometimes saves the state tree to the store.
 //   * executes all new-block callbacks.
-func (c *Chain) CommitAppliedBlock(ctx context.Context, block *bc.Block, newSnapshot *Snapshot) error {
+func (c *Chain) CommitAppliedBlock(ctx context.Context, block *bc.Block, newSnapshot *state.Snapshot) error {
 	// SaveBlock is the linearization point. Once the block is committed
 	// to persistent storage, the block has been applied and everything
 	// else can be derived from that block.
@@ -188,7 +189,7 @@ func (c *Chain) CommitAppliedBlock(ctx context.Context, block *bc.Block, newSnap
 	return nil
 }
 
-func (c *Chain) queueSnapshot(ctx context.Context, height uint64, timestamp time.Time, s *Snapshot) {
+func (c *Chain) queueSnapshot(ctx context.Context, height uint64, timestamp time.Time, s *state.Snapshot) {
 	// Non-blockingly queue the snapshot for storage.
 	ps := pendingSnapshot{height: height, snapshot: s}
 	select {

@@ -19,6 +19,7 @@ import (
 	"chain/errors"
 	"chain/protocol"
 	"chain/protocol/bc"
+	"chain/protocol/state"
 )
 
 const (
@@ -183,7 +184,7 @@ func Configure(ctx context.Context, db pg.DB, c *Config) error {
 			return err
 		}
 
-		err = chain.CommitAppliedBlock(ctx, block, protocol.NewSnapshot())
+		err = chain.CommitAppliedBlock(ctx, block, state.Empty())
 		if err != nil {
 			return err
 		}

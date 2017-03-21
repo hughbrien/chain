@@ -18,6 +18,8 @@ import (
 	"chain/protocol"
 	"chain/protocol/bc"
 	"chain/protocol/prottest"
+	"chain/protocol/prottest/memstore"
+	"chain/protocol/state"
 	"chain/testutil"
 )
 
@@ -298,7 +300,7 @@ func benchGenBlock(b *testing.B) {
 	b.StopTimer()
 
 	ctx := context.Background()
-	c := prottest.NewChainWithStorage(b, prottest.NewMemStore())
+	c := prottest.NewChainWithStorage(b, memstore.New())
 	g := generator.New(c, nil, pgtest.NewTx(b))
 	initialBlock, err := c.GetBlock(ctx, 1)
 	if err != nil {
@@ -325,7 +327,7 @@ func benchGenBlock(b *testing.B) {
 
 	now := time.Now()
 	b.StartTimer()
-	_, _, err = c.GenerateBlock(ctx, initialBlock, protocol.NewSnapshot(), now, g.PendingTxs())
+	_, _, err = c.GenerateBlock(ctx, initialBlock, state.Empty(), now, g.PendingTxs())
 	b.StopTimer()
 	if err != nil {
 		b.Fatal(err)

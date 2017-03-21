@@ -1,4 +1,4 @@
-package protocol
+package state
 
 import (
 	"fmt"
@@ -68,8 +68,8 @@ func (s *Snapshot) Copy() *Snapshot {
 	return c
 }
 
-// NewSnapshot returns an empty state snapshot.
-func NewSnapshot() *Snapshot {
+// Empty returns an empty state snapshot.
+func Empty() *Snapshot {
 	return &Snapshot{
 		Tree:   new(patricia.Tree),
 		Nonces: make(map[bc.Hash]uint64),

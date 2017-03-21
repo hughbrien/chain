@@ -6,6 +6,7 @@ import (
 
 	"chain/errors"
 	"chain/protocol/bc"
+	"chain/protocol/state"
 )
 
 // Recover performs crash recovery, restoring the blockchain
@@ -14,7 +15,7 @@ import (
 //
 // If the blockchain is empty (missing initial block), this function
 // returns a nil block and an empty snapshot.
-func (c *Chain) Recover(ctx context.Context) (*bc.Block, *Snapshot, error) {
+func (c *Chain) Recover(ctx context.Context) (*bc.Block, *state.Snapshot, error) {
 	snapshot, snapshotHeight, err := c.store.LatestSnapshot(ctx)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting latest snapshot")
@@ -28,7 +29,7 @@ func (c *Chain) Recover(ctx context.Context) (*bc.Block, *Snapshot, error) {
 		c.lastQueuedSnapshot = b.Time()
 	}
 	if snapshot == nil {
-		snapshot = NewSnapshot()
+		snapshot = state.Empty()
 	}
 
 	// The true height of the blockchain might be higher than the

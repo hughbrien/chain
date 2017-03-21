@@ -1,4 +1,4 @@
-package protocol_test
+package protocol
 
 import (
 	"context"
@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	. "chain/protocol"
 	"chain/protocol/bc"
-	"chain/protocol/prottest"
+	"chain/protocol/prottest/memstore"
+	"chain/protocol/state"
 	"chain/testutil"
 )
 
@@ -16,10 +16,10 @@ func TestGetBlock(t *testing.T) {
 	ctx := context.Background()
 
 	b1 := &bc.Block{BlockHeader: bc.BlockHeader{Height: 1}}
-	noBlocks := prottest.NewMemStore()
-	oneBlock := prottest.NewMemStore()
+	noBlocks := memstore.New()
+	oneBlock := memstore.New()
 	oneBlock.SaveBlock(ctx, b1)
-	oneBlock.SaveSnapshot(ctx, 1, NewSnapshot())
+	oneBlock.SaveSnapshot(ctx, 1, state.Empty())
 
 	cases := []struct {
 		store   Store
@@ -47,17 +47,17 @@ func TestGetBlock(t *testing.T) {
 
 func TestNoTimeTravel(t *testing.T) {
 	ctx := context.Background()
-	c, err := NewChain(ctx, bc.Hash{}, prottest.NewMemStore(), nil)
+	c, err := NewChain(ctx, bc.Hash{}, memstore.New(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	SetChainHeight(c, 1)
-	SetChainHeight(c, 2)
+	c.setHeight(1)
+	c.setHeight(2)
 
-	SetChainHeight(c, 1) // don't go backward
-	if GetChainHeight(c) != 2 {
-		t.Fatalf("c.state.height = %d want 2", GetChainHeight(c))
+	c.setHeight(1) // don't go backward
+	if c.state.height != 2 {
+		t.Fatalf("c.state.height = %d want 2", c.state.height)
 	}
 }
 
@@ -163,7 +163,7 @@ func TestGenerateBlock(t *testing.T) {
 		}),
 	}
 
-	got, _, err := c.GenerateBlock(ctx, b1, NewSnapshot(), now, txs)
+	got, _, err := c.GenerateBlock(ctx, b1, state.Empty(), now, txs)
 	if err != nil {
 		t.Fatalf("err got = %v want nil", err)
 	}
@@ -200,7 +200,7 @@ func TestValidateBlockForSig(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	c, err := NewChain(ctx, initialBlock.Hash(), prottest.NewMemStore(), nil)
+	c, err := NewChain(ctx, initialBlock.Hash(), memstore.New(), nil)
 	if err != nil {
 		t.Fatal("unexpected error ", err)
 	}
@@ -223,13 +223,13 @@ func newTestChain(tb testing.TB, ts time.Time) (c *Chain, b1 *bc.Block) {
 	if err != nil {
 		testutil.FatalErr(tb, err)
 	}
-	c, err = NewChain(ctx, b1.Hash(), prottest.NewMemStore(), nil)
+	c, err = NewChain(ctx, b1.Hash(), memstore.New(), nil)
 	if err != nil {
 		testutil.FatalErr(tb, err)
 	}
 	// TODO(tessr): consider adding MaxIssuanceWindow to NewChain
 	c.MaxIssuanceWindow = 48 * time.Hour
-	err = c.CommitAppliedBlock(ctx, b1, NewSnapshot())
+	err = c.CommitAppliedBlock(ctx, b1, state.Empty())
 	if err != nil {
 		testutil.FatalErr(tb, err)
 	}
@@ -248,7 +248,7 @@ func makeEmptyBlock(tb testing.TB, c *Chain) {
 		tb.Fatal("cannot make nonempty block")
 	}
 
-	curState := NewSnapshot()
+	curState := state.Empty()
 
 	nextBlock, nextState, err := c.GenerateBlock(ctx, curBlock, curState, time.Now(), nil)
 	if err != nil {
