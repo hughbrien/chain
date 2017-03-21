@@ -1,16 +1,15 @@
-// Package memstore provides a Store implementation that
+// MemStore is a Store implementation that
 // keeps all blockchain state in memory.
 //
 // It is used in tests to avoid needing a database.
-//
-// TODO(bobg): place this in a test-utils package, not in protocol
-package protocol
+package prottest
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
+	"chain/protocol"
 	"chain/protocol/bc"
 )
 
@@ -18,7 +17,7 @@ import (
 type MemStore struct {
 	mu          sync.Mutex
 	Blocks      map[uint64]*bc.Block
-	State       *Snapshot
+	State       *protocol.Snapshot
 	StateHeight uint64
 }
 
@@ -46,7 +45,7 @@ func (m *MemStore) SaveBlock(ctx context.Context, b *bc.Block) error {
 	return nil
 }
 
-func (m *MemStore) SaveSnapshot(ctx context.Context, height uint64, snapshot *Snapshot) error {
+func (m *MemStore) SaveSnapshot(ctx context.Context, height uint64, snapshot *protocol.Snapshot) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -65,12 +64,12 @@ func (m *MemStore) GetBlock(ctx context.Context, height uint64) (*bc.Block, erro
 	return b, nil
 }
 
-func (m *MemStore) LatestSnapshot(context.Context) (*Snapshot, uint64, error) {
+func (m *MemStore) LatestSnapshot(context.Context) (*protocol.Snapshot, uint64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.State == nil {
-		m.State = NewSnapshot()
+		m.State = protocol.NewSnapshot()
 	}
 	return m.State.Copy(), m.StateHeight, nil
 }

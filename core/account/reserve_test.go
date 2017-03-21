@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"chain/database/pg/pgtest"
-	"chain/protocol"
 	"chain/protocol/bc"
 	"chain/protocol/prottest"
 )
@@ -37,7 +36,7 @@ func TestCancelReservation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := prottest.NewChainWithStorage(t, protocol.NewMemStore(), outid)
+	c := prottest.NewChainWithStorage(t, prottest.NewMemStore(), outid)
 
 	utxoDB := newReserver(db, c, nil)
 	res, err := utxoDB.ReserveUTXO(ctx, outid, nil, time.Now())

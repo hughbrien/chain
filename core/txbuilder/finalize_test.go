@@ -298,7 +298,7 @@ func benchGenBlock(b *testing.B) {
 	b.StopTimer()
 
 	ctx := context.Background()
-	c := prottest.NewChainWithStorage(b, protocol.NewMemStore())
+	c := prottest.NewChainWithStorage(b, prottest.NewMemStore())
 	g := generator.New(c, nil, pgtest.NewTx(b))
 	initialBlock, err := c.GetBlock(ctx, 1)
 	if err != nil {
