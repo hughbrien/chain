@@ -108,7 +108,10 @@ func (t *TxVMContext) VMVersion() uint64   { return t.prog.VMVersion }
 func (t *TxVMContext) Code() []byte        { return t.prog.Code }
 func (t *TxVMContext) Arguments() [][]byte { return t.args }
 
-func (t *TxVMContext) EntryID() []byte { return t.tx.ID[:] }
+func (t *TxVMContext) EntryID() []byte {
+	id := EntryID(t.entry) // TODO(bobg): pass this in from somewhere, don't recompute it
+	return id[:]
+}
 
 func (t *TxVMContext) BlockHash() ([]byte, error)   { return nil, vm.ErrContext }
 func (t *TxVMContext) BlockTimeMS() (uint64, error) { return 0, vm.ErrContext }
