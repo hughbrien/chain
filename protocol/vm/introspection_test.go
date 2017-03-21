@@ -104,10 +104,7 @@ func TestOutputIDAndNonceOp(t *testing.T) {
 	issuanceProgram := []byte("issueprog")
 	var emptyHash bc.Hash
 	sha3pool.Sum256(emptyHash[:], nil)
-	assetID, err := bc.ComputeAssetID(issuanceProgram, zeroHash, 1, emptyHash)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assetID := bc.ComputeAssetID(issuanceProgram, zeroHash, 1, emptyHash)
 	tx := bc.NewTx(bc.TxData{
 		Inputs: []*bc.TxInput{
 			bc.NewSpendInput(nil, bc.Hash{}, assetID, 5, 0, []byte("spendprog"), bc.Hash{}, []byte("ref")),
