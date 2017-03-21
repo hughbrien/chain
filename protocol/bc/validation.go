@@ -3,6 +3,7 @@ package bc
 import (
 	"bytes"
 
+	"chain/crypto/sha3pool"
 	"chain/errors"
 	"chain/protocol/vm"
 )
@@ -49,6 +50,8 @@ type BlockVMContext struct {
 func (b *BlockVMContext) VMVersion() uint64   { return b.prog.VMVersion }
 func (b *BlockVMContext) Code() []byte        { return b.prog.Code }
 func (b *BlockVMContext) Arguments() [][]byte { return b.args }
+
+func (b *BlockVMContext) EntryID() []byte { return b.block.ID[:] }
 
 func (b *BlockVMContext) BlockHash() ([]byte, error)   { return b.block.ID[:], nil }
 func (b *BlockVMContext) BlockTimeMS() (uint64, error) { return b.block.Body.TimestampMS, nil }
@@ -105,6 +108,8 @@ func (t *TxVMContext) VMVersion() uint64   { return t.prog.VMVersion }
 func (t *TxVMContext) Code() []byte        { return t.prog.Code }
 func (t *TxVMContext) Arguments() [][]byte { return t.args }
 
+func (t *TxVMContext) EntryID() []byte { return t.tx.ID[:] }
+
 func (t *TxVMContext) BlockHash() ([]byte, error)   { return nil, vm.ErrContext }
 func (t *TxVMContext) BlockTimeMS() (uint64, error) { return 0, vm.ErrContext }
 
@@ -113,12 +118,16 @@ func (t *TxVMContext) NextConsensusProgram() ([]byte, error) { return nil, vm.Er
 func (t *TxVMContext) TxVersion() (uint64, bool) { return t.tx.Body.Version, true }
 
 func (t *TxVMContext) TxSigHash() ([]byte, error) {
-	ord := t.entry.Ordinal()
-	if ord < 0 {
-		return nil, vm.ErrContext
-	}
-	h := t.tx.SigHash(uint32(ord))
-	return h[:], nil
+	hasher := sha3pool.Get256()
+	defer sha3pool.Put256(hasher)
+
+	entryID := EntryID(t.entry) // TODO(bobg): pass this in, don't recompute it
+	hasher.Write(entryID[:])
+	hasher.Write(t.tx.ID[:])
+
+	var hash Hash
+	hasher.Read(hash[:])
+	return hash[:], nil
 }
 
 func (t *TxVMContext) NumResults() (uint64, error) { return uint64(len(t.tx.Results)), nil }

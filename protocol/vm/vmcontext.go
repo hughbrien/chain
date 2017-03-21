@@ -5,6 +5,8 @@ type VMContext interface {
 	Code() []byte
 	Arguments() [][]byte
 
+	EntryID() []byte
+
 	TxVersion() (uint64, bool)
 
 	BlockHash() ([]byte, error)

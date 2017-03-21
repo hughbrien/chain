@@ -469,7 +469,7 @@ func TestIntrospectionOps(t *testing.T) {
 			VMContext:    bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
-		op: OP_TXREFDATAHASH,
+		op: OP_TXDATAHASH,
 		startVM: &VirtualMachine{
 			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
@@ -483,7 +483,7 @@ func TestIntrospectionOps(t *testing.T) {
 			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
 	}, {
-		op: OP_REFDATAHASH,
+		op: OP_DATAHASH,
 		startVM: &VirtualMachine{
 			VMContext: bc.NewTxVMContext(tx.TxEntries, tx.TxEntries.TxInputs[0], bc.Program{VMVersion: 1}, nil),
 		},
@@ -511,7 +511,7 @@ func TestIntrospectionOps(t *testing.T) {
 
 	txops := []Op{
 		OP_CHECKOUTPUT, OP_ASSET, OP_AMOUNT, OP_PROGRAM,
-		OP_MINTIME, OP_MAXTIME, OP_TXREFDATAHASH, OP_REFDATAHASH,
+		OP_MINTIME, OP_MAXTIME, OP_TXDATAHASH, OP_DATAHASH,
 		OP_INDEX, OP_OUTPUTID,
 	}
 

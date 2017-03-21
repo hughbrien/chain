@@ -113,7 +113,7 @@ func opMaxTime(vm *virtualMachine) error {
 	return vm.pushInt64(int64(maxTimeMS), true)
 }
 
-func opRefDataHash(vm *virtualMachine) error {
+func opDataHash(vm *virtualMachine) error {
 	err := vm.applyCost(1)
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func opRefDataHash(vm *virtualMachine) error {
 	return vm.push(data, true)
 }
 
-func opTxRefDataHash(vm *virtualMachine) error {
+func opTxDataHash(vm *virtualMachine) error {
 	err := vm.applyCost(1)
 	if err != nil {
 		return err
@@ -153,6 +153,14 @@ func opIndex(vm *virtualMachine) error {
 	}
 
 	return vm.pushInt64(int64(destPos), true)
+}
+
+func opEntryID(vm *virtualMachine) error {
+	err := vm.applyCost(1)
+	if err != nil {
+		return err
+	}
+	return vm.push(vm.vmContext.EntryID(), true)
 }
 
 func opOutputID(vm *virtualMachine) error {
