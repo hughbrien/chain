@@ -1,8 +1,6 @@
 package bc
 
 import (
-	"context"
-
 	"chain/errors"
 	"chain/protocol/vm"
 )
@@ -61,10 +59,9 @@ func NewIssuance(anchor Entry, value AssetAmount, data Hash, ordinal int) *Issua
 	return iss
 }
 
-func (iss *Issuance) CheckValid(ctx context.Context) error {
-	initialBlockID, _ := ctx.Value(vcInitialBlockID).(Hash)
-	if iss.Witness.AssetDefinition.InitialBlockID != initialBlockID {
-		return errors.WithDetailf(errWrongBlockchain, "current blockchain %x, asset defined on blockchain %x", initialBlockID[:], iss.Witness.AssetDefinition.InitialBlockID[:])
+func (iss *Issuance) CheckValid(vs *validationState) error {
+	if iss.Witness.AssetDefinition.InitialBlockID != vs.blockchainID {
+		return errors.WithDetailf(errWrongBlockchain, "current blockchain %x, asset defined on blockchain %x", vs.blockchainID[:], iss.Witness.AssetDefinition.InitialBlockID[:])
 	}
 
 	computedAssetID := iss.Witness.AssetDefinition.ComputeAssetID()
@@ -72,8 +69,7 @@ func (iss *Issuance) CheckValid(ctx context.Context) error {
 		return errors.WithDetailf(errMismatchedAssetID, "asset ID is %x, issuance wants %x", computedAssetID[:], iss.Body.Value.AssetID[:])
 	}
 
-	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(NewTxVMContext(currentTx, iss, iss.Witness.AssetDefinition.IssuanceProgram, iss.Witness.Arguments))
+	err := vm.Verify(NewTxVMContext(vs.tx, iss, iss.Witness.AssetDefinition.IssuanceProgram, iss.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking issuance program")
 	}
@@ -93,24 +89,25 @@ func (iss *Issuance) CheckValid(ctx context.Context) error {
 		return errors.WithDetailf(errEntryType, "issuance anchor has type %T, should be nonce, spend, or issuance", iss.Anchor)
 	}
 
-	currentEntryID, _ := ctx.Value(vcCurrentEntryID).(Hash)
-	if anchored != currentEntryID {
-		return errors.WithDetailf(errMismatchedReference, "issuance %x anchor is for %x", currentEntryID[:], anchored[:])
+	if anchored != vs.entryID {
+		return errors.WithDetailf(errMismatchedReference, "issuance %x anchor is for %x", vs.entryID[:], anchored[:])
 	}
 
-	anchorCtx := context.WithValue(ctx, vcCurrentEntryID, iss.Body.AnchorID)
-	err = iss.Anchor.CheckValid(anchorCtx)
+	anchorVS := *vs
+	anchorVS.entryID = iss.Body.AnchorID
+	err = iss.Anchor.CheckValid(&anchorVS)
 	if err != nil {
 		return errors.Wrap(err, "checking issuance anchor")
 	}
 
-	destCtx := context.WithValue(ctx, vcDestPos, 0)
-	err = iss.Witness.Destination.CheckValid(destCtx)
+	destVS := *vs
+	destVS.destPos = 0
+	err = iss.Witness.Destination.CheckValid(&destVS)
 	if err != nil {
 		return errors.Wrap(err, "checking issuance destination")
 	}
 
-	if currentTx.Body.Version == 1 && (iss.Body.ExtHash != Hash{}) {
+	if vs.tx.Body.Version == 1 && (iss.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

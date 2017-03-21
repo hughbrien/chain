@@ -3,7 +3,6 @@ package bc
 import (
 	"chain/errors"
 	"chain/protocol/vm"
-	"context"
 )
 
 // Nonce contains data used, among other things, for distinguishing
@@ -49,15 +48,15 @@ func (n *Nonce) SetAnchored(id Hash, entry Entry) {
 	n.Anchored = entry
 }
 
-func (n *Nonce) CheckValid(ctx context.Context) error {
-	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(NewTxVMContext(currentTx, n, n.Body.Program, n.Witness.Arguments))
+func (n *Nonce) CheckValid(vs *validationState) error {
+	err := vm.Verify(NewTxVMContext(vs.tx, n, n.Body.Program, n.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking nonce program")
 	}
 
-	trCtx := context.WithValue(ctx, vcCurrentEntryID, n.Body.TimeRangeID)
-	err = n.TimeRange.CheckValid(trCtx)
+	vs2 := *vs
+	vs2.entryID = n.Body.TimeRangeID
+	err = n.TimeRange.CheckValid(&vs2)
 	if err != nil {
 		return errors.Wrap(err, "checking nonce timerange")
 	}
@@ -66,7 +65,7 @@ func (n *Nonce) CheckValid(ctx context.Context) error {
 		return errZeroTime
 	}
 
-	if currentTx.Body.Version == 1 && (n.Body.ExtHash != Hash{}) {
+	if vs.tx.Body.Version == 1 && (n.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

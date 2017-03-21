@@ -1,9 +1,6 @@
 package bc
 
-import (
-	"chain/errors"
-	"context"
-)
+import "chain/errors"
 
 // Output is the result of a transfer of value. The value it contains
 // may be accessed by a later Spend entry (if that entry can satisfy
@@ -35,15 +32,15 @@ func NewOutput(source ValueSource, controlProgram Program, data Hash, ordinal in
 	return out
 }
 
-func (o *Output) CheckValid(ctx context.Context) error {
-	ctx = context.WithValue(ctx, vcSourcePos, 0)
-	err := o.Body.Source.CheckValid(ctx)
+func (o *Output) CheckValid(vs *validationState) error {
+	vs2 := *vs
+	vs2.sourcePos = 0
+	err := o.Body.Source.CheckValid(&vs2)
 	if err != nil {
 		return errors.Wrap(err, "checking output source")
 	}
 
-	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	if currentTx.Body.Version == 1 && (o.Body.ExtHash != Hash{}) {
+	if vs.tx.Body.Version == 1 && (o.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

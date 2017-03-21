@@ -1,7 +1,6 @@
 package bc
 
 import (
-	"context"
 	"fmt"
 
 	"chain/errors"
@@ -17,11 +16,10 @@ type ValueSource struct {
 	Entry `entry:"-"`
 }
 
-// CheckValid checks the validity of a value source in the context of
-// its containing entry.
-func (vs *ValueSource) CheckValid(ctx context.Context) error {
-	refCtx := context.WithValue(ctx, vcCurrentEntryID, vs.Ref)
-	err := vs.Entry.CheckValid(refCtx)
+func (vs *ValueSource) CheckValid(vstate *validationState) error {
+	vstate2 := *vstate
+	vstate2.entryID = vs.Ref
+	err := vs.Entry.CheckValid(&vstate2)
 	if err != nil {
 		return errors.Wrap(err, "checking value source")
 	}
@@ -50,14 +48,12 @@ func (vs *ValueSource) CheckValid(ctx context.Context) error {
 		return errors.WithDetailf(errEntryType, "value source is %T, should be issuance, spend, or mux", vs.Entry)
 	}
 
-	currentEntryID, _ := ctx.Value(vcCurrentEntryID).(Hash)
-	if dest.Ref != currentEntryID {
-		return errors.WithDetailf(errMismatchedReference, "value source for %x has disagreeing destination %x", currentEntryID[:], dest.Ref[:])
+	if dest.Ref != vstate.entryID {
+		return errors.WithDetailf(errMismatchedReference, "value source for %x has disagreeing destination %x", vstate.entryID[:], dest.Ref[:])
 	}
 
-	sourcePos, _ := ctx.Value(vcSourcePos).(uint64)
-	if dest.Position != sourcePos {
-		return fmt.Errorf("value source position %d disagrees with %d", dest.Position, sourcePos)
+	if dest.Position != vstate.sourcePos {
+		return fmt.Errorf("value source position %d disagrees with %d", dest.Position, vstate.sourcePos)
 	}
 
 	if dest.Value != vs.Value {
@@ -77,7 +73,7 @@ type ValueDestination struct {
 	Entry `entry:"-"`
 }
 
-func (vd *ValueDestination) CheckValid(ctx context.Context) error {
+func (vd *ValueDestination) CheckValid(vs *validationState) error {
 	var src ValueSource
 	switch ref := vd.Entry.(type) {
 	case *Output:
@@ -102,14 +98,12 @@ func (vd *ValueDestination) CheckValid(ctx context.Context) error {
 		return fmt.Errorf("value destination is %T, should be output, retirement, or mux", vd.Entry)
 	}
 
-	currentEntryID, _ := ctx.Value(vcCurrentEntryID).(Hash)
-	if src.Ref != currentEntryID {
-		return fmt.Errorf("value destination for %x has disagreeing source %x", currentEntryID[:], src.Ref[:])
+	if src.Ref != vs.entryID {
+		return fmt.Errorf("value destination for %x has disagreeing source %x", vs.entryID[:], src.Ref[:])
 	}
 
-	destPos, _ := ctx.Value(vcDestPos).(uint64)
-	if src.Position != destPos {
-		return fmt.Errorf("value destination position %d disagrees with %d", src.Position, destPos)
+	if src.Position != vs.destPos {
+		return fmt.Errorf("value destination position %d disagrees with %d", src.Position, vs.destPos)
 	}
 
 	if src.Value != vd.Value {

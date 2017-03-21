@@ -2,7 +2,6 @@ package bc
 
 import (
 	"bytes"
-	"context"
 	"database/sql/driver"
 	"encoding/hex"
 	"fmt"
@@ -68,11 +67,11 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) err
 		}
 	}
 
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, vcInitialBlockID, initialBlockID)
-	ctx = context.WithValue(ctx, vcCurrentEntryID, b.ID)
-
-	err := b.BlockHeaderEntry.CheckValid(ctx)
+	vs := &validationState{
+		blockchainID: initialBlockID,
+		entryID:      b.ID,
+	}
+	err := b.BlockHeaderEntry.CheckValid(vs)
 	if err != nil {
 		return err
 	}
@@ -88,9 +87,11 @@ func ValidateBlock(b, prev *BlockEntries, initialBlockID Hash, runProg bool) err
 			return errors.WithDetailf(errUntimelyTransaction, "block timestamp %d, transaction time range %d-%d", b.Body.TimestampMS, tx.Body.MinTimeMS, tx.Body.MaxTimeMS)
 		}
 
-		ctx = context.WithValue(ctx, vcCurrentEntryID, tx.ID)
-		ctx = context.WithValue(ctx, vcCurrentTx, tx)
-		err := tx.CheckValid(ctx)
+		vs2 := *vs
+		vs2.tx = tx
+		vs2.entryID = tx.ID
+
+		err := tx.CheckValid(&vs2)
 		if err != nil {
 			return errors.Wrapf(err, "checking validity of transaction %d of %d", i, len(b.Transactions))
 		}

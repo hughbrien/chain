@@ -1,7 +1,5 @@
 package bc
 
-import "context"
-
 // BlockHeaderEntry contains the header information for a blockchain
 // block. It satisfies the Entry interface.
 type BlockHeaderEntry struct {
@@ -41,7 +39,7 @@ func NewBlockHeaderEntry(version, height uint64, previousBlockID Hash, timestamp
 
 // CheckValid does only part of the work of validating a block. The
 // rest is handled in ValidateBlock, which calls this.
-func (bh *BlockHeaderEntry) CheckValid(ctx context.Context) error {
+func (bh *BlockHeaderEntry) CheckValid(_ *validationState) error {
 	if bh.Body.Version == 1 && (bh.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}

@@ -3,7 +3,6 @@ package bc
 import (
 	"chain/errors"
 	"chain/protocol/vm"
-	"context"
 )
 
 // Spend accesses the value in a prior Output for transfer
@@ -62,9 +61,8 @@ func (s *Spend) SetAnchored(id Hash, entry Entry) {
 	s.Anchored = entry
 }
 
-func (s *Spend) CheckValid(ctx context.Context) error {
-	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(NewTxVMContext(currentTx, s, s.SpentOutput.Body.ControlProgram, s.Witness.Arguments))
+func (s *Spend) CheckValid(vs *validationState) error {
+	err := vm.Verify(NewTxVMContext(vs.tx, s, s.SpentOutput.Body.ControlProgram, s.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking control program")
 	}
@@ -80,13 +78,14 @@ func (s *Spend) CheckValid(ctx context.Context) error {
 		)
 	}
 
-	ctx = context.WithValue(ctx, vcDestPos, 0)
-	err = s.Witness.Destination.CheckValid(ctx)
+	vs2 := *vs
+	vs2.destPos = 0
+	err = s.Witness.Destination.CheckValid(&vs2)
 	if err != nil {
 		return errors.Wrap(err, "checking spend destination")
 	}
 
-	if currentTx.Body.Version == 1 && (s.Body.ExtHash != Hash{}) {
+	if vs.tx.Body.Version == 1 && (s.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

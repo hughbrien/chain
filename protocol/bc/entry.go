@@ -1,7 +1,6 @@
 package bc
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"reflect"
@@ -11,11 +10,32 @@ import (
 	"chain/errors"
 )
 
-type ValidChecker interface {
-	// CheckValid checks the entry for validity w.r.t. the given
+type (
+	// ValidChecker can check its validity with respect to a given
 	// validation state.
-	CheckValid(context.Context) error
-}
+	ValidChecker interface {
+		// CheckValid checks the entry for validity w.r.t. the given
+		// validation state.
+		CheckValid(*validationState) error
+	}
+
+	validationState struct {
+		// The ID of the blockchain
+		blockchainID Hash
+
+		// The enclosing transaction object
+		tx *TxEntries
+
+		// The ID of the nearest enclosing entry
+		entryID Hash
+
+		// The source position, for validating ValueSources
+		sourcePos uint64
+
+		// The destination position, for validating ValueDestinations
+		destPos uint64
+	}
+)
 
 // Entry is the interface implemented by each addressable unit in a
 // blockchain: transaction components such as spends, issuances,

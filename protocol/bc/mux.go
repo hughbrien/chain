@@ -1,8 +1,6 @@
 package bc
 
 import (
-	"context"
-
 	"chain/errors"
 	"chain/math/checked"
 	"chain/protocol/vm"
@@ -37,24 +35,25 @@ func NewMux(sources []ValueSource, program Program) *Mux {
 	return m
 }
 
-func (mux *Mux) CheckValid(ctx context.Context) error {
-	currentTx, _ := ctx.Value(vcCurrentTx).(*TxEntries)
-	err := vm.Verify(NewTxVMContext(currentTx, mux, mux.Body.Program, mux.Witness.Arguments))
+func (mux *Mux) CheckValid(vs *validationState) error {
+	err := vm.Verify(NewTxVMContext(vs.tx, mux, mux.Body.Program, mux.Witness.Arguments))
 	if err != nil {
 		return errors.Wrap(err, "checking mux program")
 	}
 
 	for i, src := range mux.Body.Sources {
-		ctx = context.WithValue(ctx, vcSourcePos, uint64(i))
-		err := src.CheckValid(ctx)
+		vs2 := *vs
+		vs2.sourcePos = uint64(i)
+		err := src.CheckValid(&vs2)
 		if err != nil {
 			return errors.Wrapf(err, "checking mux source %d", i)
 		}
 	}
 
 	for i, dest := range mux.Witness.Destinations {
-		ctx = context.WithValue(ctx, vcDestPos, uint64(i))
-		err := dest.CheckValid(ctx)
+		vs2 := *vs
+		vs2.destPos = uint64(i)
+		err := dest.CheckValid(&vs2)
 		if err != nil {
 			return errors.Wrapf(err, "checking mux destination %d", i)
 		}
@@ -88,7 +87,7 @@ func (mux *Mux) CheckValid(ctx context.Context) error {
 		}
 	}
 
-	if currentTx.Body.Version == 1 && (mux.Body.ExtHash != Hash{}) {
+	if vs.tx.Body.Version == 1 && (mux.Body.ExtHash != Hash{}) {
 		return errNonemptyExtHash
 	}
 

@@ -1,7 +1,6 @@
 package bc
 
 import (
-	"context"
 	"fmt"
 
 	"chain/crypto/sha3pool"
@@ -20,20 +19,19 @@ type TxEntries struct {
 	OutputIDs      []Hash
 }
 
-// ValidateTx validates a transaction; so does
-// TxEntries.CheckValid. This one is more suitable for calling from
-// the top level; CheckValid is preferred in a nested validation
-// context (such as when validating all the transactions in a block).
+// ValidateTx validates a transaction.
 func ValidateTx(tx *TxEntries, initialBlockID Hash) error {
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, vcInitialBlockID, initialBlockID)
-	return tx.CheckValid(ctx)
+	vs := &validationState{
+		blockchainID: initialBlockID,
+	}
+	return tx.CheckValid(vs)
 }
 
-func (tx *TxEntries) CheckValid(ctx context.Context) error {
-	ctx = context.WithValue(ctx, vcCurrentTx, tx)
-	ctx = context.WithValue(ctx, vcCurrentEntryID, tx.ID)
-	return tx.TxHeader.CheckValid(ctx)
+func (tx *TxEntries) CheckValid(vs *validationState) error {
+	vs2 := *vs
+	vs2.tx = tx
+	vs2.entryID = tx.ID
+	return tx.TxHeader.CheckValid(&vs2)
 }
 
 type BlockchainState interface {
