@@ -11,7 +11,12 @@ func New(text string) error {
 	return errors.New(text)
 }
 
-// wrapperError satisfies the error interface.
+type WrappedError interface {
+	error
+	Root() error
+}
+
+// wrapperError satisfies the WrappedError interface.
 type wrapperError struct {
 	msg    string
 	detail []string
@@ -25,14 +30,21 @@ func (e wrapperError) Error() string {
 	return e.msg
 }
 
+func (e wrapperError) Root() error {
+	return e.root
+}
+
 // Root returns the original error that was wrapped by one or more
 // calls to Wrap. If e does not wrap other errors, it will be returned
 // as-is.
 func Root(e error) error {
-	if wErr, ok := e.(wrapperError); ok {
-		return wErr.root
+	for {
+		if w, ok := e.(WrappedError); ok {
+			e = w.Root()
+		} else {
+			return e
+		}
 	}
-	return e
 }
 
 // wrap adds a context message and stack trace to err and returns a new error

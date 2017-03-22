@@ -6,7 +6,6 @@ import (
 	"io"
 	"strings"
 
-	// TODO(bobg): very little of this package depends on bc, consider trying to remove the dependency
 	"chain/errors"
 )
 
@@ -220,6 +219,7 @@ func stackCost(stack [][]byte) int64 {
 	return result
 }
 
+// Satisfies errors.WrappedError
 type Error struct {
 	Err  error
 	Prog []byte
@@ -238,6 +238,10 @@ func (e Error) Error() string {
 	}
 
 	return fmt.Sprintf("%s [prog %x = %s; args %s]", e.Err.Error(), e.Prog, dis, strings.Join(args, " "))
+}
+
+func (e Error) Root() error {
+	return e.Err
 }
 
 func wrapErr(err error, vm *virtualMachine, args [][]byte) error {
