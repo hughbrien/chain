@@ -3,7 +3,6 @@ package bc
 import (
 	"testing"
 
-	"chain/errors"
 	"chain/protocol/vm"
 
 	"github.com/davecgh/go-spew/spew"
@@ -58,7 +57,7 @@ func TestMuxValid(t *testing.T) {
 			c.f()
 		}
 		err := mux.CheckValid(vs)
-		if errors.Root(err) != c.err {
+		if rootErr(err) != c.err {
 			t.Errorf("case %d: got error %s, want %s; mux is:\n%s\nvalidationState is:\n%s", i, err, c.err, spew.Sdump(mux), spew.Sdump(vs))
 		}
 	}

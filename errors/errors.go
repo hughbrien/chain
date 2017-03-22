@@ -11,13 +11,7 @@ func New(text string) error {
 	return errors.New(text)
 }
 
-// WrappedError is an error that can wrap another error.
-type WrappedError interface {
-	error
-	Wrapped() error
-}
-
-// wrapperError satisfies the WrappedError interface.
+// wrapperError satisfies the error interface.
 type wrapperError struct {
 	msg    string
 	detail []string
@@ -26,27 +20,19 @@ type wrapperError struct {
 	root   error
 }
 
-// Error satisfies the error interface.
+// It satisfies the error interface.
 func (e wrapperError) Error() string {
 	return e.msg
-}
-
-// Wrapped satisfies the WrappedError interface.
-func (e wrapperError) Wrapped() error {
-	return e.root
 }
 
 // Root returns the original error that was wrapped by one or more
 // calls to Wrap. If e does not wrap other errors, it will be returned
 // as-is.
 func Root(e error) error {
-	for {
-		if w, ok := e.(WrappedError); ok {
-			e = w.Wrapped()
-		} else {
-			return e
-		}
+	if wErr, ok := e.(wrapperError); ok {
+		return wErr.root
 	}
+	return e
 }
 
 // wrap adds a context message and stack trace to err and returns a new error

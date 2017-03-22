@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"chain/errors"
 	"chain/protocol/vm"
 	"chain/testutil"
 )
@@ -128,4 +129,16 @@ func sample(tb testing.TB, in *txFixture) *txFixture {
 	}
 
 	return &result
+}
+
+// Like errors.Root, but also unwraps vm.Error objects.
+func rootErr(e error) error {
+	for {
+		e = errors.Root(e)
+		if e2, ok := e.(vm.Error); ok {
+			e = e2.Err
+			continue
+		}
+		return e
+	}
 }
