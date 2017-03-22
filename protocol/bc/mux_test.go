@@ -17,16 +17,19 @@ func TestMuxValid(t *testing.T) {
 		err error
 	}{
 		{},
+		// xxx moar tests
 	}
 
 	for i, c := range cases {
 		t.Logf("case %d", i)
 
-		tx := NewTx(*sampleTx())
+		fixture := sample(t, nil)
+		tx := NewTx(*fixture.tx)
 		mux = tx.TxEntries.Results[0].(*Output).Body.Source.Entry.(*Mux)
 		vs = &validationState{
-			tx:      tx.TxEntries,
-			entryID: tx.TxEntries.Results[0].(*Output).Body.Source.Ref,
+			blockchainID: fixture.initialBlockID,
+			tx:           tx.TxEntries,
+			entryID:      tx.TxEntries.Results[0].(*Output).Body.Source.Ref,
 		}
 
 		if c.f != nil {
