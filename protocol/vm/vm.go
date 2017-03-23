@@ -12,7 +12,7 @@ import (
 const initialRunLimit = 10000
 
 type virtualMachine struct {
-	vmContext VMContext
+	context *Context
 
 	program      []byte // the program currently executing
 	pc, nextPC   uint32
@@ -40,7 +40,7 @@ var ErrFalseVMResult = errors.New("false VM result")
 // execution.
 var TraceOut io.Writer
 
-func Verify(vmContext VMContext) (err error) {
+func Verify(context *Context) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if rErr, ok := r.(error); ok {
@@ -51,22 +51,19 @@ func Verify(vmContext VMContext) (err error) {
 		}
 	}()
 
-	if vmContext.VMVersion() != 1 {
+	if context.VMVersion != 1 {
 		return ErrUnsupportedVM
 	}
 
-	txVersion, ok := vmContext.TxVersion()
-
-	code := vmContext.Code()
+	code := context.Code
 	vm := &virtualMachine{
-		expansionReserved: ok && (txVersion == 1),
+		expansionReserved: context.TxVersion != nil && *context.TxVersion == 1,
 		program:           code,
 		runLimit:          initialRunLimit,
-		vmContext:         vmContext,
+		context:           context,
 	}
 
-	args := vmContext.Arguments()
-	for i, arg := range args {
+	for i, arg := range context.Arguments {
 		err = vm.push(arg, false)
 		if err != nil {
 			return errors.Wrapf(err, "pushing initial argument %d", i)
@@ -78,7 +75,7 @@ func Verify(vmContext VMContext) (err error) {
 		err = ErrFalseVMResult
 	}
 
-	return wrapErr(err, vm, args)
+	return wrapErr(err, vm, context.Arguments)
 }
 
 // falseResult returns true iff the stack is empty or the top

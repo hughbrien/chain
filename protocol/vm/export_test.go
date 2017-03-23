@@ -7,7 +7,7 @@ type VirtualMachine struct {
 	RunLimit          int64
 	DataStack         [][]byte
 	DeferredCost      int64
-	VMContext         VMContext
+	Context           *Context
 	PC                uint32
 	NextPC            uint32
 	Data              []byte
@@ -20,7 +20,7 @@ func VMtovm(in *VirtualMachine) *virtualMachine {
 		runLimit:          in.RunLimit,
 		dataStack:         in.DataStack,
 		deferredCost:      in.DeferredCost,
-		vmContext:         in.VMContext,
+		context:           in.Context,
 		pc:                in.PC,
 		nextPC:            in.NextPC,
 		data:              in.Data,
@@ -34,7 +34,7 @@ func VMfromvm(in *virtualMachine) *VirtualMachine {
 		RunLimit:          in.runLimit,
 		DataStack:         in.dataStack,
 		DeferredCost:      in.deferredCost,
-		VMContext:         in.vmContext,
+		Context:           in.context,
 		PC:                in.pc,
 		NextPC:            in.nextPC,
 		Data:              in.data,

@@ -59,7 +59,7 @@ func opCheckPredicate(vm *virtualMachine) error {
 	}
 
 	childVM := &virtualMachine{
-		vmContext: vm.vmContext,
+		context:   vm.context,
 		program:   predicate,
 		runLimit:  limit,
 		depth:     vm.depth + 1,
