@@ -55,7 +55,8 @@ $ cd $CHAIN
 $ go install ./cmd/...
 ```
 
-Set up the database:
+Run the Postgres commandline tool, createdb,  to set up the database:
+
 
 ```
 $ createdb core
